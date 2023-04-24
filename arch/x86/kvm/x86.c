@@ -10081,7 +10081,7 @@ static int vcpu_run(struct kvm_vcpu *vcpu)
 		 */
 		vcpu->arch.at_instruction_boundary = false;
 		if (kvm_vcpu_running(vcpu)) {
-			r = vcpu_enter_guest(vcpu);
+			r = vcpu_enter_guest(vcpu);   // 进入guest
 		} else {
 			r = vcpu_block(kvm, vcpu);
 		}
