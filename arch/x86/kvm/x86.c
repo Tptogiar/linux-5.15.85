@@ -9914,7 +9914,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	}
 
 	for (;;) {
-		exit_fastpath = static_call(kvm_x86_run)(vcpu);
+		exit_fastpath = static_call(kvm_x86_run)(vcpu);  // 循环2
 		if (likely(exit_fastpath != EXIT_FASTPATH_REENTER_GUEST))
 			break;
 
@@ -9956,7 +9956,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	vcpu->mode = OUTSIDE_GUEST_MODE;
 	smp_wmb();
 
-	static_call(kvm_x86_handle_exit_irqoff)(vcpu);
+	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  // handle_exit
 
 	/*
 	 * Consume any pending interrupts, including the possible source of
@@ -10007,7 +10007,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	if (vcpu->arch.apic_attention)
 		kvm_lapic_sync_from_vapic(vcpu);
 
-	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);
+	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);   // handle_exit
 	return r;
 
 cancel_injection:

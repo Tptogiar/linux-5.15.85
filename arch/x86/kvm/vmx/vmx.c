@@ -2577,7 +2577,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 				"1-setting enable VPID VM-execution control\n");
 	}
 
-	min = VM_EXIT_SAVE_DEBUG_CONTROLS | VM_EXIT_ACK_INTR_ON_EXIT;
+	min = VM_EXIT_SAVE_DEBUG_CONTROLS | VM_EXIT_ACK_INTR_ON_EXIT;  // external interrupt由host处理
 #ifdef CONFIG_X86_64
 	min |= VM_EXIT_HOST_ADDR_SPACE_SIZE;
 #endif
@@ -2591,7 +2591,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 				&_vmexit_control) < 0)
 		return -EIO;
 
-	min = PIN_BASED_EXT_INTR_MASK | PIN_BASED_NMI_EXITING;
+	min = PIN_BASED_EXT_INTR_MASK | PIN_BASED_NMI_EXITING;  // NMI-exiting
 	opt = PIN_BASED_VIRTUAL_NMIS | PIN_BASED_POSTED_INTR |
 		 PIN_BASED_VMX_PREEMPTION_TIMER;
 	if (adjust_vmx_controls(min, opt, MSR_IA32_VMX_PINBASED_CTLS,
@@ -4955,10 +4955,13 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 	return 0;
 }
 
+/* setup_vmcs_config中已将acknowledge interrupt on exit设置为1，CPU会响应中断，
+* 将信息填入VM-exit interrupt infomation 
+*/
 static __always_inline int handle_external_interrupt(struct kvm_vcpu *vcpu)
 {
 	++vcpu->stat.irq_exits;
-	return 1;
+	return 1;   // 返回1，让其继续执行主循环下的其他逻辑
 }
 
 static int handle_triple_fault(struct kvm_vcpu *vcpu)
@@ -6480,7 +6483,7 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	    "KVM: unexpected VM-Exit interrupt info: 0x%x", intr_info))
 		return;
 
-	handle_interrupt_nmi_irqoff(vcpu, gate_offset(desc));
+	handle_interrupt_nmi_irqoff(vcpu, gate_offset(desc));   // 走host IDT
 	vcpu->arch.at_instruction_boundary = true;
 }
 
@@ -6740,7 +6743,7 @@ static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 	if (vcpu->arch.cr2 != native_read_cr2())
 		native_write_cr2(vcpu->arch.cr2);
 
-	vmx->fail = __vmx_vcpu_run(vmx, (unsigned long *)&vcpu->arch.regs,
+	vmx->fail = __vmx_vcpu_run(vmx, (unsigned long *)&vcpu->arch.regs,  // vmlaunch
 				   flags);
 
 	vcpu->arch.cr2 = native_read_cr2();
@@ -6841,7 +6844,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	x86_spec_ctrl_set_guest(vmx->spec_ctrl, 0);
 
 	/* The actual VMENTER/EXIT is in the .noinstr.text section. */
-	vmx_vcpu_enter_exit(vcpu, vmx, __vmx_vcpu_run_flags(vmx));
+	vmx_vcpu_enter_exit(vcpu, vmx, __vmx_vcpu_run_flags(vmx));      // enter exit
 
 	/* All fields are clean at this point */
 	if (static_branch_unlikely(&enable_evmcs)) {
