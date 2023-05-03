@@ -4821,9 +4821,14 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 	vect_info = vmx->idt_vectoring_info;
 	intr_info = vmx_get_intr_info(vcpu);
 
-	/* (?todo?: 如果exit原因是machine-check的话，不应该是走的 handle_machine_check 吗
+	/* (?todo-answer?: 如果exit原因是machine-check的话，不应该是走的 handle_machine_check 吗
 	* 走到这里不就已经意味这不是 machine-check 吗？
-	* 还有为什么这里说的是 handle by handle_exception_nmi_irqoff ) 
+	* 还有为什么这里说的是 handled by handle_exception_nmi_irqoff ) 
+	* (answer: vmx_handle_exit_irqoff 函数中确实已经处理过machine-check了 )
+	*
+	* (?todo?: 那为什么这里还要再检查一遍？以防万一？)
+	* 
+	* tptogiar_static_call_kvm_x86_handle_exit_irqoff
 	*/
 	if (is_machine_check(intr_info) || is_nmi(intr_info))
 		return 1; /* handled by handle_exception_nmi_irqoff() */
@@ -5677,6 +5682,7 @@ static int handle_bus_lock_vmexit(struct kvm_vcpu *vcpu)
 /* 返回值小于0会退出 vcpu_run 内的循环;返回值1，会继续 vcpu_run 内的循环
 * 而 vcpu_enter_guest 内的循环用于fastpath
 * caller __vmx_handle_exit
+* vcpu_enter_guest
 */
 static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_EXCEPTION_NMI]           = handle_exception_nmi,
