@@ -1,0 +1,51 @@
+---- kvm_vm_compat_ioctl Matches (2 in 1 files) ----
+kvm_main.c (virt\kvm) line 4618 : static long kvm_vm_compat_ioctl(struct file *filp,
+kvm_vm_fops in kvm_main.c (virt\kvm) : 	KVM_COMPAT(kvm_vm_compat_ioctl),
+
+---- kvm_vcpu_compat_ioctl Matches (3 in 1 files) ----
+kvm_main.c (virt\kvm) line 125 : static long kvm_vcpu_compat_ioctl(struct file *file, unsigned int ioctl,
+kvm_vcpu_fops in kvm_main.c (virt\kvm) : 	KVM_COMPAT(kvm_vcpu_compat_ioctl),
+kvm_main.c (virt\kvm) line 4009 : static long kvm_vcpu_compat_ioctl(struct file *filp,
+
+
+---- kvm_device_ioctl Matches (3 in 1 files) ----
+kvm_main.c (virt\kvm) line 4077 : static long kvm_device_ioctl(struct file *filp, unsigned int ioctl,
+kvm_device_fops in kvm_main.c (virt\kvm) : 	.unlocked_ioctl = kvm_device_ioctl,
+kvm_device_fops in kvm_main.c (virt\kvm) : 	KVM_COMPAT(kvm_device_ioctl),
+
+---- kvm_dev_ioctl Matches (3 in 1 files) ----
+kvm_main.c (virt\kvm) line 4734 : static long kvm_dev_ioctl(struct file *filp,
+kvm_chardev_ops in kvm_main.c (virt\kvm) : 	.unlocked_ioctl = kvm_dev_ioctl,
+kvm_chardev_ops in kvm_main.c (virt\kvm) : 	KVM_COMPAT(kvm_dev_ioctl),
+
+---- kvm_vm_ioctl Matches (3 in 1 files) ----
+kvm_main.c (virt\kvm) line 4400 : static long kvm_vm_ioctl(struct file *filp,
+kvm_vm_compat_ioctl in kvm_main.c (virt\kvm) : 		r = kvm_vm_ioctl(filp, ioctl, arg);
+kvm_vm_fops in kvm_main.c (virt\kvm) : 	.unlocked_ioctl = kvm_vm_ioctl,
+---- kvm_vcpu_ioctl Matches (4 in 1 files) ----
+kvm_main.c (virt\kvm) line 122 : static long kvm_vcpu_ioctl(struct file *file, unsigned int ioctl,
+kvm_vcpu_fops in kvm_main.c (virt\kvm) : 	.unlocked_ioctl = kvm_vcpu_ioctl,
+kvm_main.c (virt\kvm) line 3797 : static long kvm_vcpu_ioctl(struct file *filp,
+kvm_vcpu_compat_ioctl in kvm_main.c (virt\kvm) : 		r = kvm_vcpu_ioctl(filp, ioctl, arg);
+
+
+/dev/kvm 接口
+kvm_chardev_ops
+kvm_dev in kvm_main.c (virt\kvm) : 	&kvm_chardev_ops,
+
+kvm_device_fops
+kvm_ioctl_create_device in kvm_main.c (virt\kvm) : 	ret = anon_inode_getfd(ops->name, &kvm_device_fops, dev, O_RDWR | O_CLOEXEC);
+kvm_vm_ioctl in kvm_main.c (virt\kvm) : 		r = kvm_ioctl_create_device(kvm, &cd);
+
+kvm_vm_compat_ioctl in kvm_main.c (virt\kvm) : 		r = kvm_vm_ioctl(filp, ioctl, arg);
+kvm_vm_fops
+kvm_dev_ioctl_create_vm in kvm_main.c (virt\kvm) : 	file = anon_inode_getfile("kvm-vm", &kvm_vm_fops, kvm, O_RDWR);
+kvm_dev_ioctl in kvm_main.c (virt\kvm) : 		r = kvm_dev_ioctl_create_vm(arg);
+
+
+kvm_vcpu_fops
+create_vcpu_fd in kvm_main.c (virt\kvm) : 	return anon_inode_getfd(name, &kvm_vcpu_fops, vcpu, O_RDWR | O_CLOEXEC);
+
+kvm_vm_fops
+kvm_dev_ioctl_create_vm in kvm_main.c (virt\kvm) : 	file = anon_inode_getfile("kvm-vm", &kvm_vm_fops, kvm, O_RDWR);
+

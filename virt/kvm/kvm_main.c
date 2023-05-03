@@ -4731,6 +4731,7 @@ put_kvm:
 	return r;
 }
 
+/* /dev/kvm 接口 */
 static long kvm_dev_ioctl(struct file *filp,
 			  unsigned int ioctl, unsigned long arg)
 {

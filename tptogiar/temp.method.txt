@@ -1,0 +1,8 @@
+kvm_vcpu_compat_ioctl
+kvm_vm_compat_ioctl
+
+kvm_device_ioctl
+kvm_dev_ioctl
+
+kvm_vm_ioctl
+kvm_vcpu_ioctl

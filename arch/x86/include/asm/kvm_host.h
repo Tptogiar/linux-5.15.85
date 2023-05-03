@@ -1256,6 +1256,7 @@ struct kvm_vcpu_stat {
 	u64 io_exits;
 	u64 mmio_exits;
 	u64 signal_exits;
+	/* 统计由于interrupt-windowexiting而vm-exit的次数 */
 	u64 irq_window_exits;
 	u64 nmi_window_exits;
 	u64 l1d_flush;

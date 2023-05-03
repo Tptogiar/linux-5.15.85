@@ -5240,7 +5240,7 @@ static int handle_interrupt_window(struct kvm_vcpu *vcpu)
 	kvm_make_request(KVM_REQ_EVENT, vcpu);
 
 	++vcpu->stat.irq_window_exits;
-	return 1;
+	return 1;  /* 继续   vcpu_run 内的循环 */
 }
 
 static int handle_invlpg(struct kvm_vcpu *vcpu)
@@ -5657,7 +5657,10 @@ static int handle_bus_lock_vmexit(struct kvm_vcpu *vcpu)
  * may resume.  Otherwise they set the kvm_run parameter to indicate what needs
  * to be done to userspace and return 0.
  */
-// 返回值小于0会退出guest主循环
+/* 返回值小于0会退出 vcpu_run 内的循环;返回值1，会继续 vcpu_run 内的循环
+* caller __vmx_handle_exit
+* 
+*/
 static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_EXCEPTION_NMI]           = handle_exception_nmi,
 	[EXIT_REASON_EXTERNAL_INTERRUPT]      = handle_external_interrupt,
@@ -5970,6 +5973,7 @@ void dump_vmcs(struct kvm_vcpu *vcpu)
  * The guest has exited.  See if we can fix it or if we need userspace
  * assistance.
  */
+ /* caller vmx_handle_exit */
 static int __vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -6148,6 +6152,7 @@ unexpected_vmexit:
 	return 0;
 }
 
+/* caller vcpu_enter_guest */
 static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
 	int ret = __vmx_handle_exit(vcpu, exit_fastpath);
@@ -6487,6 +6492,7 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	vcpu->arch.at_instruction_boundary = true;
 }
 
+/* caller vcpu_enter_guest */
 static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -6711,6 +6717,7 @@ void noinstr vmx_spec_ctrl_restore_host(struct vcpu_vmx *vmx,
 	barrier_nospec();
 }
 
+/* caller vmx_vcpu_run */
 static fastpath_t vmx_exit_handlers_fastpath(struct kvm_vcpu *vcpu)
 {
 	switch (to_vmx(vcpu)->exit_reason.basic) {
@@ -6723,6 +6730,7 @@ static fastpath_t vmx_exit_handlers_fastpath(struct kvm_vcpu *vcpu)
 	}
 }
 
+/* caller vmx_vcpu_run */
 static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 					struct vcpu_vmx *vmx,
 					unsigned long flags)
@@ -6752,7 +6760,7 @@ static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 
 	kvm_guest_exit_irqoff();
 }
-
+/* 返回值不等于 EXIT_FASTPATH_REENTER_GUEST 则会跳出x86.c vcpu_enter_guest 内的循环 */
 static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -6844,7 +6852,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	x86_spec_ctrl_set_guest(vmx->spec_ctrl, 0);
 
 	/* The actual VMENTER/EXIT is in the .noinstr.text section. */
-	vmx_vcpu_enter_exit(vcpu, vmx, __vmx_vcpu_run_flags(vmx));      // enter exit
+	vmx_vcpu_enter_exit(vcpu, vmx, __vmx_vcpu_run_flags(vmx));            /* enter exit */
 
 	/* All fields are clean at this point */
 	if (static_branch_unlikely(&enable_evmcs)) {

@@ -9673,6 +9673,7 @@ EXPORT_SYMBOL_GPL(__kvm_request_immediate_exit);
  * exiting to the userspace.  Otherwise, the value will be returned to the
  * userspace.
  */
+/* 进入guest，返回值大于0，会继续 vcpu_run 内的循环 */
 static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 {
 	int r;
@@ -9913,8 +9914,8 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 		set_debugreg(0, 7);
 	}
 
-	for (;;) {
-		exit_fastpath = static_call(kvm_x86_run)(vcpu);  // 循环2
+	for (;;) {                                                                     /* 循环 */
+		exit_fastpath = static_call(kvm_x86_run)(vcpu);  /* 进入 vmx_vcpu_run */
 		if (likely(exit_fastpath != EXIT_FASTPATH_REENTER_GUEST))
 			break;
 
@@ -9956,7 +9957,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	vcpu->mode = OUTSIDE_GUEST_MODE;
 	smp_wmb();
 
-	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  // handle_exit
+	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  //                 handle_exit
 
 	/*
 	 * Consume any pending interrupts, including the possible source of
@@ -10007,7 +10008,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	if (vcpu->arch.apic_attention)
 		kvm_lapic_sync_from_vapic(vcpu);
 
-	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);   // handle_exit
+	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);   /*           handle_exit */
 	return r;
 
 cancel_injection:
@@ -10064,6 +10065,7 @@ static inline bool kvm_vcpu_running(struct kvm_vcpu *vcpu)
 		!vcpu->arch.apf.halted);
 }
 
+/* 从接口函数 kvm_arch_vcpu_ioctl_run 过来 */
 static int vcpu_run(struct kvm_vcpu *vcpu)
 {
 	int r;
@@ -10072,7 +10074,7 @@ static int vcpu_run(struct kvm_vcpu *vcpu)
 	vcpu->srcu_idx = srcu_read_lock(&kvm->srcu);
 	vcpu->arch.l1tf_flush_l1d = true;
 
-	for (;;) {
+	for (;;) {                                 /* 循环 */
 		/*
 		 * If another guest vCPU requests a PV TLB flush in the middle
 		 * of instruction emulation, the rest of the emulation could
@@ -10251,6 +10253,7 @@ static void kvm_put_guest_fpu(struct kvm_vcpu *vcpu)
 	trace_kvm_fpu(0);
 }
 
+/* caller kvm_vcpu_ioctl */
 int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 {
 	struct kvm_run *kvm_run = vcpu->run;
