@@ -9673,7 +9673,9 @@ EXPORT_SYMBOL_GPL(__kvm_request_immediate_exit);
  * exiting to the userspace.  Otherwise, the value will be returned to the
  * userspace.
  */
-/* 进入guest，返回值大于0，会继续 vcpu_run 内的循环 */
+/* 进入guest，返回值大于0，会继续 vcpu_run 内的循环 
+* for
+*/
 static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 {
 	int r;
@@ -10065,7 +10067,9 @@ static inline bool kvm_vcpu_running(struct kvm_vcpu *vcpu)
 		!vcpu->arch.apf.halted);
 }
 
-/* 从接口函数 kvm_arch_vcpu_ioctl_run 过来 */
+/* 从接口函数 kvm_arch_vcpu_ioctl_run 过来 
+* for
+*/
 static int vcpu_run(struct kvm_vcpu *vcpu)
 {
 	int r;

@@ -5658,8 +5658,8 @@ static int handle_bus_lock_vmexit(struct kvm_vcpu *vcpu)
  * to be done to userspace and return 0.
  */
 /* 返回值小于0会退出 vcpu_run 内的循环;返回值1，会继续 vcpu_run 内的循环
+* 而 vcpu_enter_guest 内的循环用于fastpath
 * caller __vmx_handle_exit
-* 
 */
 static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_EXCEPTION_NMI]           = handle_exception_nmi,
