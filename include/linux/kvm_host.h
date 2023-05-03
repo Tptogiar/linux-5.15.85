@@ -304,6 +304,7 @@ struct kvm_vcpu {
 	int vcpu_idx; /* index in kvm->vcpus array */
 	int srcu_idx;
 	int mode;
+	/*  */
 	u64 requests;
 	unsigned long guest_debug;
 

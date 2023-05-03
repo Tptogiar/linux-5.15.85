@@ -2591,6 +2591,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 				&_vmexit_control) < 0)
 		return -EIO;
 
+#define tptogair_setup_vmcs_config_PIN_BASED_EXT_INTR_MASK_PIN_BASED_NMI_EXITIN for_code_jump_in_source_insight
 	min = PIN_BASED_EXT_INTR_MASK | PIN_BASED_NMI_EXITING;  // NMI-exiting
 	opt = PIN_BASED_VIRTUAL_NMIS | PIN_BASED_POSTED_INTR |
 		 PIN_BASED_VMX_PREEMPTION_TIMER;
@@ -4820,6 +4821,10 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 	vect_info = vmx->idt_vectoring_info;
 	intr_info = vmx_get_intr_info(vcpu);
 
+	/* (?todo?: 如果exit原因是machine-check的话，不应该是走的 handle_machine_check 吗
+	* 走到这里不就已经意味这不是 machine-check 吗？
+	* 还有为什么这里说的是 handle by handle_exception_nmi_irqoff ) 
+	*/
 	if (is_machine_check(intr_info) || is_nmi(intr_info))
 		return 1; /* handled by handle_exception_nmi_irqoff() */
 
@@ -4955,8 +4960,17 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 	return 0;
 }
 
-/* setup_vmcs_config中已将acknowledge interrupt on exit设置为1，CPU会响应中断，
-* 将信息填入VM-exit interrupt infomation 
+/* 
+* 在external-interrupt exiting 为1的情况下，外部中断会导致vm-exit，
+* 在被置零的情况下，会直接走guest的IDT，不会vm-exit
+*
+* setup_vmcs_config中已将acknowledge interrupt on exit设置为1，
+* CPU会响应中断，然后将信息自动填入VM-exit interrupt infomation，
+* 等到下次vm-entry的时候就会将中断注入guest
+* 
+* vmx_handle_exit_irqoff 函数中已经处理了外部中断
+* (?todo?: 那么上面说的情况是不是会导致外部中断被host，guest各处理一遍？
+* 还是说host处理完把字段置为失效了？)
 */
 static __always_inline int handle_external_interrupt(struct kvm_vcpu *vcpu)
 {
@@ -5240,7 +5254,10 @@ static int handle_interrupt_window(struct kvm_vcpu *vcpu)
 	kvm_make_request(KVM_REQ_EVENT, vcpu);
 
 	++vcpu->stat.irq_window_exits;
-	return 1;  /* 继续   vcpu_run 内的循环 */
+	/* 继续   vcpu_run 内的循环 
+	* 最终会在 vcpu_enter_guest 内重新判断是否有需要注入的中断
+	*/
+	return 1;  
 }
 
 static int handle_invlpg(struct kvm_vcpu *vcpu)
@@ -6152,7 +6169,9 @@ unexpected_vmexit:
 	return 0;
 }
 
-/* caller vcpu_enter_guest */
+/* caller vcpu_enter_guest 
+* tptogiar_static_call_kvm_x86_handle_exit
+*/
 static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
 	int ret = __vmx_handle_exit(vcpu, exit_fastpath);
@@ -6462,6 +6481,7 @@ static void handle_interrupt_nmi_irqoff(struct kvm_vcpu *vcpu,
 	kvm_after_interrupt(vcpu);
 }
 
+/* caller vmx_handle_exit_irqoff */
 static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 {
 	const unsigned long nmi_entry = (unsigned long)asm_exc_nmi_noist;
@@ -6492,11 +6512,14 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	vcpu->arch.at_instruction_boundary = true;
 }
 
-/* caller vcpu_enter_guest */
+/* caller vcpu_enter_guest 
+* tptogiar_static_call_kvm_x86_handle_exit_irqoff
+*/
 static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 
+	/* 如果需要模拟 */
 	if (vmx->emulation_required)
 		return;
 
@@ -6760,7 +6783,9 @@ static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 
 	kvm_guest_exit_irqoff();
 }
-/* 返回值不等于 EXIT_FASTPATH_REENTER_GUEST 则会跳出x86.c vcpu_enter_guest 内的循环 */
+/* 返回值不等于 EXIT_FASTPATH_REENTER_GUEST 则会跳出x86.c vcpu_enter_guest 内的循环 
+* caller vcpu_enter_guest
+*/
 static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -6905,6 +6930,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	}
 
 	vmx->exit_reason.full = vmcs_read32(VM_EXIT_REASON);
+	/* handle_machine_check */
 	if (unlikely((u16)vmx->exit_reason.basic == EXIT_REASON_MCE_DURING_VMENTRY))
 		kvm_machine_check();
 
@@ -6924,6 +6950,7 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	if (is_guest_mode(vcpu))
 		return EXIT_FASTPATH_NONE;
 
+	/* 先尝试能不能fastpath */
 	return vmx_exit_handlers_fastpath(vcpu);
 }
 

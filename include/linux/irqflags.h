@@ -195,12 +195,14 @@ extern void warn_bogus_irq_restore(void);
  */
 #ifdef CONFIG_TRACE_IRQFLAGS
 
+/* sti */
 #define local_irq_enable()				\
 	do {						\
 		trace_hardirqs_on();			\
 		raw_local_irq_enable();			\
 	} while (0)
 
+/* cli */
 #define local_irq_disable()				\
 	do {						\
 		bool was_disabled = raw_irqs_disabled();\

@@ -9105,7 +9105,7 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 
 	if (vcpu->arch.exception.injected) {
 		kvm_inject_exception(vcpu);
-		can_inject = false;
+		can_inject = false;kvm_x86_ops
 	}
 	/*
 	 * Do not inject an NMI or interrupt if there is a pending
@@ -9675,6 +9675,7 @@ EXPORT_SYMBOL_GPL(__kvm_request_immediate_exit);
  */
 /* 进入guest，返回值大于0，会继续 vcpu_run 内的循环 
 * for
+* caller vcpu_run
 */
 static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 {
@@ -9695,6 +9696,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 		goto out;
 	}
 
+	/*  判断是否有中断需要注入 */
 	if (kvm_request_pending(vcpu)) {
 		if (kvm_check_request(KVM_REQ_VM_BUGGED, vcpu)) {
 			r = -EIO;
@@ -9850,8 +9852,10 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 		goto cancel_injection;
 	}
 
+	/* 先关掉，后面根据条件有需要才打开 */
 	preempt_disable();
 
+	/* vmx_prepare_switch_to_guest */
 	static_call(kvm_x86_prepare_guest_switch)(vcpu);
 
 	/*
@@ -9859,6 +9863,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 * IPI are then delayed after guest entry, which ensures that they
 	 * result in virtual interrupt delivery.
 	 */
+	/* 关中断，进入guest后的状态状态由  interruptibility state决定             */
 	local_irq_disable();
 	vcpu->mode = IN_GUEST_MODE;
 
@@ -9887,6 +9892,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	if (kvm_lapic_enabled(vcpu))
 		static_call_cond(kvm_x86_sync_pir_to_irr)(vcpu);
 
+	/* 如果 vcpu->requests   中发现还有未处理的请求 */
 	if (kvm_vcpu_exit_request(vcpu)) {
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		smp_wmb();
@@ -9899,6 +9905,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 
 	if (req_immediate_exit) {
 		kvm_make_request(KVM_REQ_EVENT, vcpu);
+		/* vmx_request_immediate_exit */
 		static_call(kvm_x86_request_immediate_exit)(vcpu);
 	}
 
@@ -9959,7 +9966,12 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	vcpu->mode = OUTSIDE_GUEST_MODE;
 	smp_wmb();
 
-	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  //                 handle_exit
+#define tptogiar_static_call_kvm_x86_handle_exit_irqoff for_code_jump_in_source_insight
+	/* (?todo?: 为什么这里需要这么处理) 
+	* tptogair_setup_vmcs_config_PIN_BASED_EXT_INTR_MASK_PIN_BASED_NMI_EXITIN
+	*/
+	/* vmx_handle_exit_irqoff  svm_handle_exit_irqoff  */
+	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  //                 handle_exit_irqoff
 
 	/*
 	 * Consume any pending interrupts, including the possible source of
@@ -9969,6 +9981,9 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 * stat.exits increment will do nicely.
 	 */
 	kvm_before_interrupt(vcpu);
+	/* 由于RFLAGS被强制设置为0x2，意味着IF=0
+	* 开中断 
+	*/
 	local_irq_enable();
 	++vcpu->stat.exits;
 	local_irq_disable();
@@ -10010,7 +10025,9 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	if (vcpu->arch.apic_attention)
 		kvm_lapic_sync_from_vapic(vcpu);
 
-	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);   /*           handle_exit */
+#define tptogiar_static_call_kvm_x86_handle_exit for_code_jump_in_source_insight
+	/* vmx_handle_exit */
+	r = static_call(kvm_x86_handle_exit)(vcpu, exit_fastpath);   
 	return r;
 
 cancel_injection:
@@ -10067,8 +10084,9 @@ static inline bool kvm_vcpu_running(struct kvm_vcpu *vcpu)
 		!vcpu->arch.apf.halted);
 }
 
-/* 从接口函数 kvm_arch_vcpu_ioctl_run 过来 
+/*
 * for
+* caller kvm_arch_vcpu_ioctl_run 接口函数
 */
 static int vcpu_run(struct kvm_vcpu *vcpu)
 {
