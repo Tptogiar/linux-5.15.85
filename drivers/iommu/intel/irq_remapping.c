@@ -823,6 +823,7 @@ static inline void set_irq_posting_cap(void)
 	}
 }
 
+/* caller intel_irq_remap_ops  */
 static int __init intel_enable_irq_remapping(void)
 {
 	struct dmar_drhd_unit *drhd;

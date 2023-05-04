@@ -2467,6 +2467,7 @@ static __init int adjust_vmx_controls(u32 ctl_min, u32 ctl_opt,
 	ctl |= vmx_msr_low;  /* bit == 1 in low word  ==> must be one  */
 
 	/* Ensure minimum (required) set of control bits are supported. */
+	/* 如果 min 中部分位被取消了 */
 	if (ctl_min & ~ctl)
 		return -EIO;
 
@@ -2474,6 +2475,8 @@ static __init int adjust_vmx_controls(u32 ctl_min, u32 ctl_opt,
 	return 0;
 }
 
+/* caller hardware_setup & vmx_check_processor_compat
+*/
 static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 				    struct vmx_capability *vmx_cap)
 {
@@ -2504,6 +2507,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 	opt = CPU_BASED_TPR_SHADOW |
 	      CPU_BASED_USE_MSR_BITMAPS |
 	      CPU_BASED_ACTIVATE_SECONDARY_CONTROLS;
+	/* MSR_IA32_VMX_PROCBASED_CTLS 决定 Processor-based primary 控制字段 */
 	if (adjust_vmx_controls(min, opt, MSR_IA32_VMX_PROCBASED_CTLS,
 				&_cpu_based_exec_control) < 0)
 		return -EIO;
@@ -2539,6 +2543,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 			SECONDARY_EXEC_BUS_LOCK_DETECTION;
 		if (cpu_has_sgx())
 			opt2 |= SECONDARY_EXEC_ENCLS_EXITING;
+		/* MSR_IA32_VMX_PROCBASED_CTLS2 决定 Processor-based secondary 控制字段 */
 		if (adjust_vmx_controls(min2, opt2,
 					MSR_IA32_VMX_PROCBASED_CTLS2,
 					&_cpu_based_2nd_exec_control) < 0)
@@ -2592,15 +2597,22 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 		return -EIO;
 
 #define tptogair_setup_vmcs_config_PIN_BASED_EXT_INTR_MASK_PIN_BASED_NMI_EXITIN for_code_jump_in_source_insight
-	min = PIN_BASED_EXT_INTR_MASK | PIN_BASED_NMI_EXITING;  // NMI-exiting
+	min = PIN_BASED_EXT_INTR_MASK | PIN_BASED_NMI_EXITING;  // external-interrupt exiting & NMI-exiting
 	opt = PIN_BASED_VIRTUAL_NMIS | PIN_BASED_POSTED_INTR |
 		 PIN_BASED_VMX_PREEMPTION_TIMER;
+	/* 如果检测到有 procbase primary能力，就开启opt选项
+	*
+	* (?todo?: 这里既然开启posted interrus了，那设置posted interrupt descriptor address的地方在哪)
+	*/
 	if (adjust_vmx_controls(min, opt, MSR_IA32_VMX_PINBASED_CTLS,
 				&_pin_based_exec_control) < 0)
 		return -EIO;
 
 	if (cpu_has_broken_vmx_preemption_timer())
 		_pin_based_exec_control &= ~PIN_BASED_VMX_PREEMPTION_TIMER;
+	/* posted-interrupt 必须在 virtual-interrupt delivery 开启的情况下开启
+	* 至于 external-interrupt 和 acknowledge interrupt on exit 已经是min了
+	*/
 	if (!(_cpu_based_2nd_exec_control &
 		SECONDARY_EXEC_VIRTUAL_INTR_DELIVERY))
 		_pin_based_exec_control &= ~PIN_BASED_POSTED_INTR;
@@ -2662,6 +2674,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 
 	vmcs_conf->revision_id = vmx_msr_low;
 
+	/* 最终赋值阶段 */
 	vmcs_conf->pin_based_exec_ctrl = _pin_based_exec_control;
 	vmcs_conf->cpu_based_exec_ctrl = _cpu_based_exec_control;
 	vmcs_conf->cpu_based_2nd_exec_ctrl = _cpu_based_2nd_exec_control;
@@ -4143,6 +4156,7 @@ void set_cr4_guest_host_mask(struct vcpu_vmx *vmx)
 	vmcs_writel(CR4_GUEST_HOST_MASK, ~vcpu->arch.cr4_guest_owned_bits);
 }
 
+/* caller init_vmcs */
 static u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
 {
 	u32 pin_based_exec_ctrl = vmcs_config.pin_based_exec_ctrl;
@@ -4384,6 +4398,8 @@ static u32 vmx_secondary_exec_control(struct vcpu_vmx *vmx)
  * Noting that the initialization of Guest-state Area of VMCS is in
  * vmx_vcpu_reset().
  */
+ /* caller vmx_create_vcpu
+ */
 static void init_vmcs(struct vcpu_vmx *vmx)
 {
 	if (nested)
@@ -4559,6 +4575,9 @@ static void vmx_enable_nmi_window(struct kvm_vcpu *vcpu)
 	exec_controls_setbit(to_vmx(vcpu), CPU_BASED_NMI_WINDOW_EXITING);
 }
 
+/* caller  inject_pending_event 
+* static_call(kvm_x86_set_irq)(vcpu)
+*/
 static void vmx_inject_irq(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4969,13 +4988,19 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 * 在external-interrupt exiting 为1的情况下，外部中断会导致vm-exit，
 * 在被置零的情况下，会直接走guest的IDT，不会vm-exit
 *
-* setup_vmcs_config中已将acknowledge interrupt on exit设置为1，
+* setup_vmcs_config 中已将acknowledge interrupt on exit设置为1，
 * CPU会响应中断，然后将信息自动填入VM-exit interrupt infomation，
+* KVM将其信息复制到vm-entry interrupt infomation
 * 等到下次vm-entry的时候就会将中断注入guest
 * 
-* vmx_handle_exit_irqoff 函数中已经处理了外部中断
-* (?todo?: 那么上面说的情况是不是会导致外部中断被host，guest各处理一遍？
+* vmx_handle_exit_irqoff 函数中已经处理了外部中断，
+* 所以这里只需要简单统计一下，然后返回1，让流程继续 vcpu_run 内的循环，
+* 重新进入 vcpu_enter_guest 即可
+* 
+* (?todo-answer?: 那么上面说的情况是不是会导致外部中断被host，guest各处理一遍？
 * 还是说host处理完把字段置为失效了？)
+* (answer: kvm在处理外部中断的时候 handle_external_interrupt_irqoff ，并没有把中断信息
+* 复制到vm-entry interrupt information中，所以不会处理两遍)
 */
 static __always_inline int handle_external_interrupt(struct kvm_vcpu *vcpu)
 {
@@ -6504,6 +6529,29 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 		handle_interrupt_nmi_irqoff(&vmx->vcpu, nmi_entry);
 }
 
+/*
+* (?todo-answer?: 为什么外部中断就只能走host IDT，难道就不需要注入给guest？)
+* (answer: 一般没有开启posted interrus的情况下，外部中断要么都有host处理，要么都由guest处理
+* 在 setup_vmcs_config 中已经开启了external interrupt exiting和NMIs exiting，
+* 所以所有的外部中断都会由host处理
+* 
+* 而在开启posted interrus的情况下，
+* pyhsical vector等于notification vector时，外部中断由guest IDT处理，
+* pyhsical vector不等于notification vector时，外部中断由host处理，也就是这里的处理函数，
+* )
+*
+*
+* (?todo?: 在没有开启posted interrus的情况下，所有外部中断都由host处理了，
+* 那guest怎么接受到中断的？比如异步read()后如何通知guest？
+* 或是外设(比如鼠标)等产生的中断如何传递到guest的？)
+*
+*
+* (?todo?: 在 setup_vmcs_config 中检测到有porcbased primary能力的话，已经开启 posted interrupts了，
+* 已经interrupt remapping了，那么map是如何初始化的？此后的外部中断是走哪里的？怎么走的？)
+*
+*
+* tptogair_setup_vmcs_config_PIN_BASED_EXT_INTR_MASK_PIN_BASED_NMI_EXITIN
+*/
 static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 {
 	u32 intr_info = vmx_get_intr_info(vcpu);
@@ -6975,6 +7023,8 @@ static void vmx_free_vcpu(struct kvm_vcpu *vcpu)
 	free_loaded_vmcs(vmx->loaded_vmcs);
 }
 
+/* kvm_arch_vcpu_create
+*/
 static int vmx_create_vcpu(struct kvm_vcpu *vcpu)
 {
 	struct vmx_uret_msr *tsx_ctrl;
@@ -7897,6 +7947,9 @@ static __init void vmx_setup_user_return_msrs(void)
 		kvm_add_user_return_msr(vmx_uret_msrs_list[i]);
 }
 
+/* caller kvm_x86_init_ops  vmx_init_ops
+* kvm_arch_hardware_setup
+*/
 static __init int hardware_setup(void)
 {
 	unsigned long host_bndcfgs;

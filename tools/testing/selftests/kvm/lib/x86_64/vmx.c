@@ -201,6 +201,7 @@ bool load_vmcs(struct vmx_pages *vmx)
 /*
  * Initialize the control fields to the most basic settings possible.
  */
+ /* caller  prepare_vmcs */
 static inline void init_vmcs_control_fields(struct vmx_pages *vmx)
 {
 	uint32_t sec_exec_ctl = 0;

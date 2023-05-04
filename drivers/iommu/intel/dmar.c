@@ -965,6 +965,7 @@ static void unmap_iommu(struct intel_iommu *iommu)
  * Memory map the iommu's registers.  Start w/ a single page, and
  * possibly expand if that turns out to be insufficent.
  */
+ /* caller alloc_iommu */
 static int map_iommu(struct intel_iommu *iommu, u64 phys_addr)
 {
 	int map_size, err=0;
