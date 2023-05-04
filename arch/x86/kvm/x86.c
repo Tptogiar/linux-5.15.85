@@ -9105,7 +9105,7 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 
 	if (vcpu->arch.exception.injected) {
 		kvm_inject_exception(vcpu);
-		can_inject = false;kvm_x86_ops
+		can_inject = false;
 	}
 	/*
 	 * Do not inject an NMI or interrupt if there is a pending
@@ -9863,7 +9863,12 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 * IPI are then delayed after guest entry, which ensures that they
 	 * result in virtual interrupt delivery.
 	 */
-	/* 关中断，进入guest后的状态状态由  interruptibility state决定             */
+	/* 关中断，进入guest后的状态状态由  interruptibility state决定
+	* (?todo?: 为什么要先关中断？
+	* https://patchwork.kernel.org/project/kvm/patch/1482164232-130035-7-git-send-email-pbonzini@redhat.com
+	* https://github.com/torvalds/linux/commit/b95234c840045b7c72380fd14c59416af28fcb02
+	* )
+	*/
 	local_irq_disable();
 	vcpu->mode = IN_GUEST_MODE;
 
@@ -9967,11 +9972,15 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	smp_wmb();
 
 #define tptogiar_static_call_kvm_x86_handle_exit_irqoff for_code_jump_in_source_insight
-	/* (?todo?: 为什么这里需要这么处理) 
+	/* (?todo-reason?: 为什么这里需要在开中断之前先处理部分reason) 
+	* (answer: 可以确保这些handler在当前CPU上执行，因为中断还没开，不会发生切换)
+	*
+	* 在 setup_vmcs_config 中已经将external interrupt exiting 和 NMI exiting置1，
+	* 所以所有外部中断和NMI都会exit
 	* tptogair_setup_vmcs_config_PIN_BASED_EXT_INTR_MASK_PIN_BASED_NMI_EXITIN
 	*/
 	/* vmx_handle_exit_irqoff  svm_handle_exit_irqoff  */
-	static_call(kvm_x86_handle_exit_irqoff)(vcpu);  //                 handle_exit_irqoff
+	static_call(kvm_x86_handle_exit_irqoff)(vcpu);
 
 	/*
 	 * Consume any pending interrupts, including the possible source of

@@ -6525,10 +6525,14 @@ static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 
-	/* 如果需要模拟 */
+	/* 如果需要模拟的话，执行时间比较久，则不再这里处理
+	* 因为这里是在中断还未开启的情况下执行的，中断不能关太久
+	*/
 	if (vmx->emulation_required)
 		return;
 
+	/* (?todo?: 为什么是单独挑这两个来处理)
+	*/
 	if (vmx->exit_reason.basic == EXIT_REASON_EXTERNAL_INTERRUPT)
 		handle_external_interrupt_irqoff(vcpu);
 	else if (vmx->exit_reason.basic == EXIT_REASON_EXCEPTION_NMI)
