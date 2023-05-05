@@ -135,6 +135,13 @@ struct kvm_mmu_op_release_pt {
 
 struct kvm_vcpu_pv_apf_data {
 	/* Used for 'page not present' events delivered via #PF */
+	/* can be KVM_PV_REASON_PAGE_READY or KVM_PV_REASON_PAGE_READY 
+	*
+	* caller kvm_read_and_reset_apf_flags
+	* 
+	* (?todo-answer?: 这个值清零是在 kvm_read_and_reset_apf_flags 中，那是谁来负责赋值的？
+	* 在半虚拟化环境里面怎么给这个flags赋值的？)
+	*/
 	__u32 flags;
 
 	/* Used for 'page ready' events delivered via interrupt notification */

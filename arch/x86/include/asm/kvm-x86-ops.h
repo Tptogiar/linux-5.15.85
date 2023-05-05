@@ -12,6 +12,7 @@ BUILD_BUG_ON(1)
  * case where there is no definition or a function name that
  * doesn't match the typical naming convention is supplied.
  */
+ /* 定义static_call指向的地方 */
 KVM_X86_OP_NULL(hardware_enable)
 KVM_X86_OP_NULL(hardware_disable)
 KVM_X86_OP_NULL(hardware_unsetup)

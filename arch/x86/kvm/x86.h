@@ -106,12 +106,29 @@ static inline unsigned int __shrink_ple_window(unsigned int val,
 void kvm_service_local_tlb_flush_requests(struct kvm_vcpu *vcpu);
 int kvm_check_nested_events(struct kvm_vcpu *vcpu);
 
+/* caller kvm_vcpu_reset & 
+ * 		  x86_emulate_instruction &  
+ *        handle_task_switch &  task_switch_interception
+ *        __vmx_complete_interrupts & svm_complete_interrupts &
+ *        nested_vmx_vmexit & nested_vmx_vmexit
+ *        
+ */
 static inline void kvm_clear_exception_queue(struct kvm_vcpu *vcpu)
 {
 	vcpu->arch.exception.pending = false;
 	vcpu->arch.exception.injected = false;
 }
 
+/* 
+ * (?todo-answer?: 这个函数的目的是做什么，这里将中断信息记录起来之后给谁用？怎么用？)
+ * (answer: 一方面是在 vmx_inject_irq 真正把中断信息写入vm-entry interrupt information 时会用以判断中断类型，获取中断号
+ * 另一方面，是用以标记 vm-entry interrupt information 是否已经被写入信息了(在此次vm-exit内))
+ * 
+ * caller kvm_vcpu_ioctl_interrupt & 
+ * 		  inject_pending_event &
+ *   	  __set_sregs & 
+ * 	      __vmx_complete_interrupts & svm_complete_interrupts
+ */
 static inline void kvm_queue_interrupt(struct kvm_vcpu *vcpu, u8 vector,
 	bool soft)
 {
@@ -120,6 +137,12 @@ static inline void kvm_queue_interrupt(struct kvm_vcpu *vcpu, u8 vector,
 	vcpu->arch.interrupt.nr = vector;
 }
 
+/* caller kvm_vcpu_reset &
+ * 	 	  nested_vmx_vmexit & nested_svm_vmexit &
+ * 		  __vmx_complete_interrupts & svm_complete_interrupts &
+ * 		  handle_task_switch & task_switch_interception 
+ *  	  
+ */ 		  
 static inline void kvm_clear_interrupt_queue(struct kvm_vcpu *vcpu)
 {
 	vcpu->arch.interrupt.injected = false;

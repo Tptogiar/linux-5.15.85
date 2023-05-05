@@ -83,7 +83,7 @@ static inline long kvm_hypercall4(unsigned int nr, unsigned long p1,
 	return ret;
 }
 
-#ifdef CONFIG_KVM_GUEST
+#ifdef CONFIG_KVM_GUEST /* 启用kvm半虚拟化 */
 void kvmclock_init(void);
 void kvmclock_disable(void);
 bool kvm_para_available(void);
@@ -96,6 +96,7 @@ bool __kvm_handle_async_pf(struct pt_regs *regs, u32 token);
 
 DECLARE_STATIC_KEY_FALSE(kvm_async_pf_enabled);
 
+/* caller DEFINE_IDTENTRY_RAW_ERRORCODE(exc_page_fault) */
 static __always_inline bool kvm_handle_async_pf(struct pt_regs *regs, u32 token)
 {
 	if (static_branch_unlikely(&kvm_async_pf_enabled))

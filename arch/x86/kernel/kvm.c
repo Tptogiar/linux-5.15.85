@@ -62,6 +62,7 @@ static int __init parse_no_stealacc(char *arg)
 
 early_param("no-steal-acc", parse_no_stealacc);
 
+/* 定义了 apf_reason    */
 static DEFINE_PER_CPU_DECRYPTED(struct kvm_vcpu_pv_apf_data, apf_reason) __aligned(64);
 DEFINE_PER_CPU_DECRYPTED(struct kvm_steal_time, steal_time) __aligned(64) __visible;
 static int has_steal_clock = 0;
@@ -135,6 +136,7 @@ static bool kvm_async_pf_queue_task(u32 token, struct kvm_task_sleep_node *n)
  * Invoked from the async pagefault handling code or from the VM exit page
  * fault handler. In both cases RCU is watching.
  */
+ /* caller kvm_handle_page_fault */
 void kvm_async_pf_task_wait_schedule(u32 token)
 {
 	struct kvm_task_sleep_node n;
@@ -150,6 +152,7 @@ void kvm_async_pf_task_wait_schedule(u32 token)
 		if (hlist_unhashed(&n.link))
 			break;
 
+		/* (?todo?: 为什么这里要开中断后调用 schedule，在 __schedule 中不也要关中断吗) */
 		local_irq_enable();
 		schedule();
 		local_irq_disable();
@@ -238,10 +241,16 @@ again:
 }
 EXPORT_SYMBOL_GPL(kvm_async_pf_task_wake);
 
+/* 将其值读取后作为返回值，并将原值清零 
+*
+* caller __kvm_handle_async_pf
+*  handle_exception_nmi_irqoff & svm_vcpu_run
+*/
 noinstr u32 kvm_read_and_reset_apf_flags(void)
 {
 	u32 flags = 0;
 
+	/* kvm_vcpu_pv_apf_data */
 	if (__this_cpu_read(apf_reason.enabled)) {
 		flags = __this_cpu_read(apf_reason.flags);
 		__this_cpu_write(apf_reason.flags, 0);
@@ -251,6 +260,7 @@ noinstr u32 kvm_read_and_reset_apf_flags(void)
 }
 EXPORT_SYMBOL_GPL(kvm_read_and_reset_apf_flags);
 
+/* caller kvm_handle_async_pf */
 noinstr bool __kvm_handle_async_pf(struct pt_regs *regs, u32 token)
 {
 	u32 flags = kvm_read_and_reset_apf_flags();

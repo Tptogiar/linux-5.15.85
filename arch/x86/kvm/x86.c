@@ -614,6 +614,11 @@ static void kvm_leave_nested(struct kvm_vcpu *vcpu)
 	kvm_x86_ops.nested_ops->leave_nested(vcpu);
 }
 
+/* caller kvm_queue_exception & kvm_queue_exception_e
+ * 		  kvm_requeue_exception & kvm_requeue_exception_e
+ * 		  kvm_queue_exception_e_p 
+ *
+ */
 static void kvm_multiple_exception(struct kvm_vcpu *vcpu,
 		unsigned nr, bool has_error, u32 error_code,
 	        bool has_payload, unsigned long payload, bool reinject)
@@ -4519,6 +4524,7 @@ static int kvm_vcpu_ready_for_interrupt_injection(struct kvm_vcpu *vcpu)
 		!vcpu->arch.exception.pending);
 }
 
+/* caller kvm_arch_vcpu_ioctl */
 static int kvm_vcpu_ioctl_interrupt(struct kvm_vcpu *vcpu,
 				    struct kvm_interrupt *irq)
 {
@@ -5084,6 +5090,7 @@ static int kvm_vcpu_ioctl_enable_cap(struct kvm_vcpu *vcpu,
 	}
 }
 
+/* caller kvm_vcpu_ioctl */
 long kvm_arch_vcpu_ioctl(struct file *filp,
 			 unsigned int ioctl, unsigned long arg)
 {
@@ -7114,6 +7121,7 @@ static int emulator_pio_in_out(struct kvm_vcpu *vcpu, int size,
 	vcpu->arch.pio.count  = count;
 	vcpu->arch.pio.size = size;
 
+	/* 如果成功就不需要返回userspace了，返回1，在 vcpu_enter_guest 中让guest继续运行 */
 	if (!kernel_pio(vcpu, vcpu->arch.pio_data))
 		return 1;
 
@@ -7940,6 +7948,7 @@ int kvm_skip_emulated_instruction(struct kvm_vcpu *vcpu)
 	unsigned long rflags = static_call(kvm_x86_get_rflags)(vcpu);
 	int r;
 
+	/* vmx_skip_emulated_instruction */
 	r = static_call(kvm_x86_skip_emulated_instruction)(vcpu);
 	if (unlikely(!r))
 		return 0;
@@ -8320,6 +8329,7 @@ static int kvm_fast_pio_in(struct kvm_vcpu *vcpu, int size,
 	int ret;
 
 	/* For size less than 4 we merge, else we zero extend */
+	/* 函数是由宏 BUILD_KVM_GPR_ACCESSORS 生成的 */
 	val = (size < 4) ? kvm_rax_read(vcpu) : 0;
 
 	ret = emulator_pio_in(vcpu, size, port, &val, 1);
@@ -9084,6 +9094,7 @@ int kvm_check_nested_events(struct kvm_vcpu *vcpu)
 	return kvm_x86_ops.nested_ops->check_events(vcpu);
 }
 
+/* caller inject_pending_event */
 static void kvm_inject_exception(struct kvm_vcpu *vcpu)
 {
 	trace_kvm_inj_exception(vcpu->arch.exception.nr,
@@ -9093,6 +9104,12 @@ static void kvm_inject_exception(struct kvm_vcpu *vcpu)
 
 	if (vcpu->arch.exception.error_code && !is_protmode(vcpu))
 		vcpu->arch.exception.error_code = false;
+	/* 
+	 * 并非只是queue，写中断信息到vm-extry interrupt information了
+	 * 在上游已经改为 static_call(kvm_x86_inject_exception)(vcpu);
+	 * 
+	 * vmx_queue_exception | svm_queue_exception 
+	 */
 	static_call(kvm_x86_queue_exception)(vcpu);
 }
 
@@ -9101,6 +9118,10 @@ static void kvm_inject_exception(struct kvm_vcpu *vcpu)
 static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 {
 	int r;
+	/* (?todo?: 如果遇到需要注入多个事件怎么办？
+	 * 注入第一个事件后，后面的事件会被怎么处理？)
+	 * (answer: )
+	 */
 	bool can_inject = true;
 
 	/* try to reinject previous events if any */
@@ -9123,11 +9144,18 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 	 * serviced prior to recognizing any new events in order to
 	 * fully complete the previous instruction.
 	 */
+	/* 
+	 * 如果没有异常在等待注入的时候才注入NMI或是中断 */
 	else if (!vcpu->arch.exception.pending) {
+		/* (?todo?: 会不会有同时有NMI和interrupt的情况？)
+		 * 
+		 */
 		if (vcpu->arch.nmi_injected) {
+			/* vmx_inject_nmi  svm_inject_nmi */
 			static_call(kvm_x86_set_nmi)(vcpu);
 			can_inject = false;
 		} else if (vcpu->arch.interrupt.injected) {
+			/* vmx_inject_irq  svm_set_irq */
 			static_call(kvm_x86_set_irq)(vcpu);
 			can_inject = false;
 		}
@@ -9229,7 +9257,9 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 			goto out;
 		if (r) {
 			kvm_queue_interrupt(vcpu, kvm_cpu_get_interrupt(vcpu), false);
+			 /* vmx_inject_irq  svm_set_irq */
 			static_call(kvm_x86_set_irq)(vcpu);
+			/* vmx_interrupt_allowed  svm_interrupt_allowed */
 			WARN_ON(static_call(kvm_x86_interrupt_allowed)(vcpu, true) < 0);
 		}
 		if (kvm_cpu_has_injectable_intr(vcpu))

@@ -86,6 +86,7 @@ module_param_named(vnmi, enable_vnmi, bool, S_IRUGO);
 bool __read_mostly flexpriority_enabled = 1;
 module_param_named(flexpriority, flexpriority_enabled, bool, S_IRUGO);
 
+/* ept 是否启用 */
 bool __read_mostly enable_ept = 1;
 module_param_named(ept, enable_ept, bool, S_IRUGO);
 
@@ -1709,6 +1710,7 @@ static void vmx_queue_exception(struct kvm_vcpu *vcpu)
 
 	vmcs_write32(VM_ENTRY_INTR_INFO_FIELD, intr_info);
 
+	/* 如果处于HLT状态，则激活，不然中断注入了也不会被执行 */
 	vmx_clear_hlt(vcpu);
 }
 
@@ -4564,6 +4566,7 @@ static void vmx_enable_irq_window(struct kvm_vcpu *vcpu)
 	exec_controls_setbit(to_vmx(vcpu), CPU_BASED_INTR_WINDOW_EXITING);
 }
 
+/* caller inject_pending_event */
 static void vmx_enable_nmi_window(struct kvm_vcpu *vcpu)
 {
 	if (!enable_vnmi ||
@@ -4601,6 +4604,7 @@ static void vmx_inject_irq(struct kvm_vcpu *vcpu)
 			     vmx->vcpu.arch.event_exit_inst_len);
 	} else
 		intr |= INTR_TYPE_EXT_INTR;
+	/* 写入到 VM-entry interrupt information 中 */
 	vmcs_write32(VM_ENTRY_INTR_INFO_FIELD, intr);
 
 	vmx_clear_hlt(vcpu);
@@ -4696,6 +4700,7 @@ static int vmx_nmi_allowed(struct kvm_vcpu *vcpu, bool for_injection)
 	return !vmx_nmi_blocked(vcpu);
 }
 
+/* 判断guest的可中断性 */
 bool vmx_interrupt_blocked(struct kvm_vcpu *vcpu)
 {
 	if (is_guest_mode(vcpu) && nested_exit_on_intr(vcpu))
@@ -4829,6 +4834,7 @@ bool vmx_guest_inject_ac(struct kvm_vcpu *vcpu)
 	       (kvm_get_rflags(vcpu) & X86_EFLAGS_AC);
 }
 
+/* 外部中断和NMI其实已经在 vmx_handle_exit_irqoff 中处理过了 */
 static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4893,6 +4899,8 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 
 	if (is_page_fault(intr_info)) {
 		cr2 = vmx_get_exit_qual(vcpu);
+		/* 在 handle_exception_nmi_irqoff 中已经先将 apf_reason.flags 的值到 vcpu->arch.apf.host_apf_flags 中了 */
+		/* 没有开启半虚拟化的情况下 */
 		if (enable_ept && !vcpu->arch.apf.host_apf_flags) {
 			/*
 			 * EPT will cause page fault only if we need to
@@ -4902,11 +4910,13 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			kvm_fixup_and_inject_pf_error(vcpu, cr2, error_code);
 			return 1;
 		} else
+			/* 没有开启ept的情况下 (vcpu->arch.apf.host_apf_flags中可能有值) */
 			return kvm_handle_page_fault(vcpu, error_code, cr2, NULL, 0);
 	}
 
 	ex_no = intr_info & INTR_INFO_VECTOR_MASK;
 
+	/* 如果guest处于实模式下 */
 	if (vmx->rmode.vm86_active && rmode_exception(vcpu, ex_no))
 		return handle_rmode_exception(vcpu, ex_no, error_code);
 
@@ -5012,17 +5022,20 @@ static int handle_triple_fault(struct kvm_vcpu *vcpu)
 {
 	vcpu->run->exit_reason = KVM_EXIT_SHUTDOWN;
 	vcpu->mmio_needed = 0;
-	return 0;
+	return 0;  /* 返回到  userspace */
 }
 
+/* Table 28-5.  Exit Qualification for I/O Instructions
+ * 
+ */
 static int handle_io(struct kvm_vcpu *vcpu)
 {
 	unsigned long exit_qualification;
 	int size, in, string;
 	unsigned port;
 
-	exit_qualification = vmx_get_exit_qual(vcpu);
-	string = (exit_qualification & 16) != 0;
+	exit_qualification = vmx_get_exit_qual(vcpu); /* 读取reason的附加条件 */
+	string = (exit_qualification & 16) != 0;     /* 判断是否为string类型 */
 
 	++vcpu->stat.io_exits;
 
@@ -5104,6 +5117,7 @@ static int handle_desc(struct kvm_vcpu *vcpu)
 	return kvm_emulate_instruction(vcpu, 0);
 }
 
+/* Table 28-3.  Exit Qualification for Control-Register Accesses  */
 static int handle_cr(struct kvm_vcpu *vcpu)
 {
 	unsigned long exit_qualification, val;
@@ -5481,6 +5495,7 @@ static int handle_nmi_window(struct kvm_vcpu *vcpu)
 
 	exec_controls_clearbit(to_vmx(vcpu), CPU_BASED_NMI_WINDOW_EXITING);
 	++vcpu->stat.nmi_window_exits;
+	/* 记录到 vcpu->requests 中，下次 vcpu_enter_guest 会判断是否有需要注入的 KVM_REQ_EVENT  */
 	kvm_make_request(KVM_REQ_EVENT, vcpu);
 
 	return 1;
@@ -5704,7 +5719,7 @@ static int handle_bus_lock_vmexit(struct kvm_vcpu *vcpu)
  * may resume.  Otherwise they set the kvm_run parameter to indicate what needs
  * to be done to userspace and return 0.
  */
-/* 返回值小于0会退出 vcpu_run 内的循环;返回值1，会继续 vcpu_run 内的循环
+/* 返回值小于等于0会退出 vcpu_run 内的循环;返回值1，会继续 vcpu_run 内的循环
 * 而 vcpu_enter_guest 内的循环用于fastpath
 * caller __vmx_handle_exit
 * vcpu_enter_guest
@@ -6520,6 +6535,7 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 
 	/* if exit due to PF check for async PF */
 	if (is_page_fault(intr_info))
+		/* 在没有启动 CONFIG_KVM_GUEST      半虚拟化的情况下， kvm_read_and_reset_apf_flags          只会返回零 */
 		vmx->vcpu.arch.apf.host_apf_flags = kvm_read_and_reset_apf_flags();
 	/* Handle machine checks before interrupts are enabled */
 	else if (is_machine_check(intr_info))
@@ -6650,6 +6666,9 @@ static void vmx_recover_nmi_blocking(struct vcpu_vmx *vmx)
 					      vmx->loaded_vmcs->entry_time));
 }
 
+/* caller vmx_complete_interrupts &
+ * 	      vmx_cancel_injection
+ */
 static void __vmx_complete_interrupts(struct kvm_vcpu *vcpu,
 				      u32 idt_vectoring_info,
 				      int instr_len_field,
@@ -6704,6 +6723,9 @@ static void __vmx_complete_interrupts(struct kvm_vcpu *vcpu,
 	}
 }
 
+/* caller vmx_vcpu_run & 
+ * 		  nested_vmx_vmexit
+ */
 static void vmx_complete_interrupts(struct vcpu_vmx *vmx)
 {
 	__vmx_complete_interrupts(&vmx->vcpu, vmx->idt_vectoring_info,
@@ -7003,6 +7025,10 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	vmx->loaded_vmcs->launched = 1;
 
 	vmx_recover_nmi_blocking(vmx);
+	/* 执行中断注入后的后续操作，
+	 * 比如重置vcpu->arch.exception和vcpu->arch.interrupt里面的信息， 
+	 * 以方便下次重新注入
+	 */
 	vmx_complete_interrupts(vmx);
 
 	if (is_guest_mode(vcpu))

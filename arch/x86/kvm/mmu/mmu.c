@@ -4039,6 +4039,7 @@ static int nonpaging_page_fault(struct kvm_vcpu *vcpu, gpa_t gpa,
 				 PG_LEVEL_2M, false);
 }
 
+/* caller handle_exception_nmi & pf_interception */
 int kvm_handle_page_fault(struct kvm_vcpu *vcpu, u64 error_code,
 				u64 fault_address, char *insn, int insn_len)
 {
@@ -4052,6 +4053,7 @@ int kvm_handle_page_fault(struct kvm_vcpu *vcpu, u64 error_code,
 #endif
 
 	vcpu->arch.l1tf_flush_l1d = true;
+	/* 没有开启半虚拟化情况下 */
 	if (!flags) {
 		trace_kvm_page_fault(fault_address, error_code);
 
@@ -4059,8 +4061,9 @@ int kvm_handle_page_fault(struct kvm_vcpu *vcpu, u64 error_code,
 			kvm_mmu_unprotect_page_virt(vcpu, fault_address);
 		r = kvm_mmu_page_fault(vcpu, fault_address, error_code, insn,
 				insn_len);
-	} else if (flags & KVM_PV_REASON_PAGE_NOT_PRESENT) {
+	} else if (flags & KVM_PV_REASON_PAGE_NOT_PRESENT) { /* 开启了kvm半虚拟化  & page no present */
 		vcpu->arch.apf.host_apf_flags = 0;
+		/* (?todo?: 为什么这里要关中断后开启) */
 		local_irq_disable();
 		kvm_async_pf_task_wait_schedule(fault_address);
 		local_irq_enable();

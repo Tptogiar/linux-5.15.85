@@ -189,6 +189,11 @@ static inline void leave_guest_mode(struct kvm_vcpu *vcpu)
 	vcpu->stat.guest_mode = 0;
 }
 
+/* (?todo?: 这里的guestmode指的是什么？
+ * 代码运行到这里，已经回到KV，逻辑cpu肯定已经回到root模式了，所以这个肯定不是值逻辑cpu是不是guest模式，
+ * 注释中说 HF_GUEST_MASK 表示 VCPU is in guest-mode  
+ * 如果是指vcpu是不是出于guest模式的话，vcpu不是一直都是guest(no-root)模式吗，难道这里判断的是vcpu是不是在内核态？) 
+ */
 static inline bool is_guest_mode(struct kvm_vcpu *vcpu)
 {
 	return vcpu->arch.hflags & HF_GUEST_MASK;

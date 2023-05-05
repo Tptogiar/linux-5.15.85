@@ -711,6 +711,7 @@ struct kvm_vcpu_arch {
 
 	u8 event_exit_inst_len;
 
+	/* 下面两个结构体用于表示当前需要注入的状态 */
 	struct kvm_queued_exception {
 		bool pending;
 		bool injected;
@@ -723,9 +724,9 @@ struct kvm_vcpu_arch {
 	} exception;
 
 	struct kvm_queued_interrupt {
-		bool injected;
-		bool soft;
-		u8 nr;
+		bool injected;  /* 表示当前是否有需要注入的中断 */
+		bool soft;      /* 表示需要注入的中断是否为软中断 */
+		u8 nr;          /* 表示中断vector */
 	} interrupt;
 
 	int halt_request; /* real mode on Intel only */
@@ -1245,6 +1246,7 @@ struct kvm_vm_stat {
 	u64 max_mmu_rmap_size;
 };
 
+/* 用于统计vCPU运行过程中产生的各种事件 */
 struct kvm_vcpu_stat {
 	struct kvm_vcpu_stat_generic generic;
 	u64 pf_fixed;

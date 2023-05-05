@@ -3794,6 +3794,7 @@ static int kvm_vcpu_ioctl_get_stats_fd(struct kvm_vcpu *vcpu)
 	return fd;
 }
 
+/* vcpu相关 */
 static long kvm_vcpu_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {
@@ -4074,6 +4075,7 @@ static int kvm_device_ioctl_attr(struct kvm_device *dev,
 	return accessor(dev, &attr);
 }
 
+/* device相关 */
 static long kvm_device_ioctl(struct file *filp, unsigned int ioctl,
 			     unsigned long arg)
 {
@@ -4397,6 +4399,7 @@ static int kvm_vm_ioctl_get_stats_fd(struct kvm *kvm)
 	return fd;
 }
 
+/* vm相关 */
 static long kvm_vm_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {

@@ -347,6 +347,7 @@ enum vmcs_field {
 /*
  * Interruption-information format
  */
+ /* Table 25-18.  Format of the VM-Exit Interruption-Information Field */
 #define INTR_INFO_VECTOR_MASK           0xff            /* 7:0 */
 #define INTR_INFO_INTR_TYPE_MASK        0x700           /* 10:8 */
 #define INTR_INFO_DELIVER_CODE_MASK     0x800           /* 11 */
@@ -359,6 +360,7 @@ enum vmcs_field {
 #define VECTORING_INFO_DELIVER_CODE_MASK    	INTR_INFO_DELIVER_CODE_MASK
 #define VECTORING_INFO_VALID_MASK       	INTR_INFO_VALID_MASK
 
+/* Table 25-16.  Format of the VM-Entry Interruption-Information Field */
 #define INTR_TYPE_EXT_INTR              (0 << 8) /* external interrupt */
 #define INTR_TYPE_RESERVED              (1 << 8) /* reserved */
 #define INTR_TYPE_NMI_INTR		(2 << 8) /* NMI */
@@ -369,6 +371,7 @@ enum vmcs_field {
 #define INTR_TYPE_OTHER_EVENT           (7 << 8) /* other event */
 
 /* GUEST_INTERRUPTIBILITY_INFO flags. */
+/* Table 25-3.  Format of Interruptibility State */
 #define GUEST_INTR_STATE_STI		0x00000001
 #define GUEST_INTR_STATE_MOV_SS		0x00000002
 #define GUEST_INTR_STATE_SMI		0x00000004
