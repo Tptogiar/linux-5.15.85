@@ -298,6 +298,7 @@ SYM_FUNC_START(vmread_error_trampoline)
 	RET
 SYM_FUNC_END(vmread_error_trampoline)
 
+
 SYM_FUNC_START(vmx_do_interrupt_nmi_irqoff)
 	/*
 	 * Unconditionally create a stack frame, getting the correct RSP on the

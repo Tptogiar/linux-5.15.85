@@ -509,7 +509,7 @@ static inline void vmx_segment_cache_clear(struct vcpu_vmx *vmx)
 {
 	vmx->segment_cache.bitmask = 0;
 }
-
+/* init hardware_setup */
 static unsigned long host_idt_base;
 
 #if IS_ENABLED(CONFIG_HYPERV)
@@ -4849,7 +4849,7 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 	/* (?todo-answer?: 如果exit原因是machine-check的话，不应该是走的 handle_machine_check 吗
 	* 走到这里不就已经意味这不是 machine-check 吗？
 	* 还有为什么这里说的是 handled by handle_exception_nmi_irqoff ) 
-	* (answer: vmx_handle_exit_irqoff 函数中确实已经处理过machine-check了 )
+	* (answer: vmx_handle_exit_irqoff 中 handle_exception_nmi_irqoff 函数中确实已经处理过machine-check了 )
 	*
 	* (?todo?: 那为什么这里还要再检查一遍？以防万一？)
 	* 
@@ -6517,8 +6517,14 @@ static void vmx_apicv_post_state_restore(struct kvm_vcpu *vcpu)
 	memset(vmx->pi_desc.pir, 0, sizeof(vmx->pi_desc.pir));
 }
 
+/* arch\x86\kvm\vmx\vmenter.S:302 
+ * caller handle_interrupt_nmi_irqoff
+ */
 void vmx_do_interrupt_nmi_irqoff(unsigned long entry);
 
+/* caller handle_external_interrupt_irqoff &
+ * 		  handle_exception_nmi_irqoff
+ */
 static void handle_interrupt_nmi_irqoff(struct kvm_vcpu *vcpu,
 					unsigned long entry)
 {
@@ -6557,7 +6563,7 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 * )
 *
 *
-* (?todo?: 在没有开启posted interrus的情况下，所有外部中断都由host处理了，
+* (?todo01?: 在没有开启posted interrus的情况下，所有外部中断都由host处理了，
 * 那guest怎么接受到中断的？比如异步read()后如何通知guest？
 * 或是外设(比如鼠标)等产生的中断如何传递到guest的？)
 *
@@ -6577,8 +6583,14 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	if (KVM_BUG(!is_external_intr(intr_info), vcpu->kvm,
 	    "KVM: unexpected VM-Exit interrupt info: 0x%x", intr_info))
 		return;
-
-	handle_interrupt_nmi_irqoff(vcpu, gate_offset(desc));   // 走host IDT
+	/* 
+	 * (?todo02-answer?: 这里IDTE指向的函数是host原有的handler，还是KVM的函数，
+	 * 可能会在函数里面给guest注入中断等逻辑？(纯软件虚拟化的时候)，与todo01有联系？)
+	 * (answer: 看了 vmx_init 大概的调用路径，kvm应该是没有修改 IDT handler的
+	 * 中断虚拟化纯软件是实现不了的，所以中断虚拟化没有纯软件实现的时候，
+	 * 因为vLAPIC与CPU没有物理连接，没办法把中断信息告诉CPU的，必须得有VMCS才能行)
+	 */
+	handle_interrupt_nmi_irqoff(vcpu, gate_offset(desc));   /* 走host IDT */
 	vcpu->arch.at_instruction_boundary = true;
 }
 
@@ -6595,7 +6607,15 @@ static void vmx_handle_exit_irqoff(struct kvm_vcpu *vcpu)
 	if (vmx->emulation_required)
 		return;
 
-	/* (?todo?: 为什么是单独挑这两个来处理)
+	/* (?todo-answer?: 为什么这里需要在开中断之前先处理部分reason) 
+	* (answer: 可以确保这些handler在当前CPU上执行，因为中断还没开，不会发生切换
+	* 对于可以 EXIT_REASON_EXCEPTION_NMI 确保不可屏蔽中断先执行于可屏蔽中断)
+	*
+	*
+	* (?todo-answer?: 对于 EXIT_REASON_EXTERNAL_INTERRUPT ，为什么需要确保在当前CPU上？)
+	* (answer: 为了让外部中断尽快被执行
+	* 因为如果等到开中断后在执行，可能会遇到任务调度，
+	* 导致intr_info中记录的外部中断得等到下次被调度到的时候才能执行)
 	*/
 	if (vmx->exit_reason.basic == EXIT_REASON_EXTERNAL_INTERRUPT)
 		handle_external_interrupt_irqoff(vcpu);
@@ -7974,7 +7994,7 @@ static __init void vmx_setup_user_return_msrs(void)
 }
 
 /* caller kvm_x86_init_ops  vmx_init_ops
-* kvm_arch_hardware_setup
+* 		  kvm_arch_hardware_setup
 */
 static __init int hardware_setup(void)
 {
@@ -7990,6 +8010,7 @@ static __init int hardware_setup(void)
 	if (setup_vmcs_config(&vmcs_config, &vmx_capability) < 0)
 		return -EIO;
 
+	/* 下面检测boot的能力 */
 	if (boot_cpu_has(X86_FEATURE_NX))
 		kvm_enable_efer_bits(EFER_NX);
 
@@ -7998,6 +8019,7 @@ static __init int hardware_setup(void)
 		WARN_ONCE(host_bndcfgs, "KVM: BNDCFGS in host will be lost");
 	}
 
+	/* 下面检测cpu的能力 */
 	if (!cpu_has_vmx_mpx())
 		supported_xcr0 &= ~(XFEATURE_MASK_BNDREGS |
 				    XFEATURE_MASK_BNDCSR);
@@ -8220,6 +8242,7 @@ static void vmx_exit(void)
 }
 module_exit(vmx_exit);
 
+/* module_init(vmx_init) */
 static int __init vmx_init(void)
 {
 	int r, cpu;

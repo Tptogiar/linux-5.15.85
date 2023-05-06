@@ -10005,8 +10005,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	smp_wmb();
 
 #define tptogiar_static_call_kvm_x86_handle_exit_irqoff for_code_jump_in_source_insight
-	/* (?todo-answer?: 为什么这里需要在开中断之前先处理部分reason) 
-	* (answer: 可以确保这些handler在当前CPU上执行，因为中断还没开，不会发生切换)
+	/* 
 	*
 	* 在 setup_vmcs_config 中已经将external interrupt exiting 和 NMI exiting置1，
 	* 所以所有外部中断和NMI都会exit

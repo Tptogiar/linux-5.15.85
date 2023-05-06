@@ -1542,6 +1542,7 @@ extern struct kvm_x86_ops kvm_x86_ops;
 #define KVM_X86_OP_NULL KVM_X86_OP
 #include <asm/kvm-x86-ops.h>
 
+/* 更新static_call */
 static inline void kvm_ops_static_call_update(void)
 {
 #define KVM_X86_OP(func) \
