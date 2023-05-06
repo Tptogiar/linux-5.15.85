@@ -141,6 +141,7 @@ static inline bool is_error_page(struct page *page)
 	return IS_ERR(page);
 }
 
+/* 0~7位为1的掩码 */
 #define KVM_REQUEST_MASK           GENMASK(7,0)
 #define KVM_REQUEST_NO_WAKEUP      BIT(8)
 #define KVM_REQUEST_WAIT           BIT(9)
@@ -1724,6 +1725,10 @@ static inline int kvm_ioeventfd(struct kvm *kvm, struct kvm_ioeventfd *args)
 
 void kvm_arch_irq_routing_update(struct kvm *kvm);
 
+/* 
+ * caller(myraid)
+ *
+ */
 static inline void kvm_make_request(int req, struct kvm_vcpu *vcpu)
 {
 	/*

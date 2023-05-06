@@ -139,8 +139,9 @@ struct kvm_vcpu_pv_apf_data {
 	*
 	* caller kvm_read_and_reset_apf_flags
 	* 
-	* (?todo-answer?: 这个值清零是在 kvm_read_and_reset_apf_flags 中，那是谁来负责赋值的？
+	* (?todo?: 这个值清零是在 kvm_read_and_reset_apf_flags 中，那是谁来负责赋值的？
 	* 在半虚拟化环境里面怎么给这个flags赋值的？)
+	* 
 	*/
 	__u32 flags;
 

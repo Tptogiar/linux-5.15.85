@@ -614,7 +614,11 @@ static void kvm_leave_nested(struct kvm_vcpu *vcpu)
 	kvm_x86_ops.nested_ops->leave_nested(vcpu);
 }
 
-/* caller kvm_queue_exception & kvm_queue_exception_e
+/* 当vm-exit后，在handler处理过程中，又遇到异常的情况，就可能会走到这里
+ * 用  然后在handler中返回1，流程会走到 vcpu_enter_guest ，在其头部会判断
+ * 是否需要注入事件
+ * 
+ * caller kvm_queue_exception & kvm_queue_exception_e
  * 		  kvm_requeue_exception & kvm_requeue_exception_e
  * 		  kvm_queue_exception_e_p 
  *
@@ -627,9 +631,16 @@ static void kvm_multiple_exception(struct kvm_vcpu *vcpu,
 	int class1, class2;
 
 	kvm_make_request(KVM_REQ_EVENT, vcpu);
-
+	/* 当前没有需要注入的异常或中断 */
 	if (!vcpu->arch.exception.pending && !vcpu->arch.exception.injected) {
 	queue:
+		/* 
+		 * (?todo-answer?: 为什么在很多其他地方，注入中断都是通过 kvm_make_request 来表示有
+		 * 中断要注入的，而这里却没有使用这个，而这里只是 
+		 * vcpu->arch.exception.pending = true 而已？why? )
+		 * (answer: sb，铁憨憨，上面不就已经调用 kvm_make_request 了吗)
+		 *
+		 */
 		if (reinject) {
 			/*
 			 * On vmentry, vcpu->arch.exception.pending is only
@@ -662,7 +673,17 @@ static void kvm_multiple_exception(struct kvm_vcpu *vcpu,
 			kvm_deliver_exception_payload(vcpu);
 		return;
 	}
-
+	/*
+	 * (?todo-answer?: 这里在注入异常的时候，发现之前还有异常还没注入，而且还是DF的时候，
+	 * 根据文档26.2 OTHER CAUSES OF VM EXITS，可知会引发TripleFault，
+	 * 但是vm-exit后不是已经在 vmx_vcpu_run 中exit后通过调用 vmx_complete_interrupts 把
+	 * vcpu->arch.exception 和 vcpu->arch.interrupt 重置了吗？ 
+	 * 为什么上面这个if这里还用 vcpu->arch.exception.pending 来判断是不是multple？)
+	 * (answer: 细看，发现 vmx_vcpu_run 中exit后不一定调用 vmx_complete_interrupts ，
+	 * 当exit-reason是entry-failed时，不会调用vmx_complete_interrupts ，
+	 * vmx_complete_interrupts.pending 信息得以保留)
+	 * 
+	 */
 	/* to check exception */
 	prev_nr = vcpu->arch.exception.nr;
 	if (prev_nr == DF_VECTOR) {
@@ -9895,13 +9916,17 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 * IPI are then delayed after guest entry, which ensures that they
 	 * result in virtual interrupt delivery.
 	 */
+	 
 	/* 关中断
-	* (?todo?: 进入guest后的状态状态由  interruptibility state决定?  )
-	* (?todo?: 为什么要先关中断？
-	* https://patchwork.kernel.org/project/kvm/patch/1482164232-130035-7-git-send-email-pbonzini@redhat.com
-	* https://github.com/torvalds/linux/commit/b95234c840045b7c72380fd14c59416af28fcb02
-	* )
-	*/
+	 * (?todo?: 进入guest后的状态状态由  interruptibility state决定?  )
+	 *
+	 *
+	 * (?todo?: 为什么要先关中断？
+	 * https://patchwork.kernel.org/project/kvm/patch/1482164232-130035-7-git-send-email-pbonzini@redhat.com
+	 * https://github.com/torvalds/linux/commit/b95234c840045b7c72380fd14c59416af28fcb02
+	 * )
+	 *
+	 */
 	local_irq_disable();
 	vcpu->mode = IN_GUEST_MODE;
 
@@ -12084,6 +12109,9 @@ int kvm_arch_vcpu_runnable(struct kvm_vcpu *vcpu)
 	return kvm_vcpu_running(vcpu) || kvm_vcpu_has_events(vcpu);
 }
 
+/* caller kvm_arch_dy_runnable & 
+ *		  kvm_vcpu_on_spin
+ */
 bool kvm_arch_dy_has_pending_interrupt(struct kvm_vcpu *vcpu)
 {
 	if (vcpu->arch.apicv_active && static_call(kvm_x86_dy_apicv_has_pending_interrupt)(vcpu))
@@ -12092,6 +12120,9 @@ bool kvm_arch_dy_has_pending_interrupt(struct kvm_vcpu *vcpu)
 	return false;
 }
 
+/* caller vcpu_dy_runnable
+ * 
+ */
 bool kvm_arch_dy_runnable(struct kvm_vcpu *vcpu)
 {
 	if (READ_ONCE(vcpu->arch.pv.pv_unhalted))

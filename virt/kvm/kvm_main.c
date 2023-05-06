@@ -3468,6 +3468,7 @@ bool __weak kvm_arch_dy_runnable(struct kvm_vcpu *vcpu)
 	return kvm_arch_vcpu_runnable(vcpu);
 }
 
+/* caller kvm_vcpu_on_spin */
 static bool vcpu_dy_runnable(struct kvm_vcpu *vcpu)
 {
 	if (kvm_arch_dy_runnable(vcpu))
@@ -3486,6 +3487,9 @@ bool __weak kvm_arch_dy_has_pending_interrupt(struct kvm_vcpu *vcpu)
 	return false;
 }
 
+/* caller kvm_hv_hypercall &
+ * 		  handle_pause & pause_interception
+ */
 void kvm_vcpu_on_spin(struct kvm_vcpu *me, bool yield_to_kernel_mode)
 {
 	struct kvm *kvm = me->kvm;

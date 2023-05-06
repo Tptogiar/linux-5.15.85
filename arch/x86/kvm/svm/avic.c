@@ -684,6 +684,7 @@ int svm_deliver_avic_intr(struct kvm_vcpu *vcpu, int vec)
 	return 0;
 }
 
+/* caller kvm_arch_dy_has_pending_interrupt */
 bool svm_dy_apicv_has_pending_interrupt(struct kvm_vcpu *vcpu)
 {
 	return false;

@@ -719,7 +719,7 @@ struct kvm_vcpu_arch {
 		u8 nr;
 		u32 error_code;
 		unsigned long payload;
-		bool has_payload;
+		bool has_payload;  /*  表示异常是否包含附加信息 */
 		u8 nested_apf;
 	} exception;
 

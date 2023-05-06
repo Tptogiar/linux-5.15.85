@@ -34,6 +34,7 @@
 #define __GENMASK(h, l) \
 	(((~UL(0)) - (UL(1) << (l)) + 1) & \
 	 (~UL(0) >> (BITS_PER_LONG - 1 - (h))))
+/* 用于生成掩码，h，l表示掩码中需要设置为1的最高位和最低位的位置 */
 #define GENMASK(h, l) \
 	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
 

@@ -509,7 +509,7 @@ static inline void vmx_segment_cache_clear(struct vcpu_vmx *vmx)
 {
 	vmx->segment_cache.bitmask = 0;
 }
-/* init hardware_setup */
+/* initializer hardware_setup */
 static unsigned long host_idt_base;
 
 #if IS_ENABLED(CONFIG_HYPERV)
@@ -2509,7 +2509,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 	opt = CPU_BASED_TPR_SHADOW |
 	      CPU_BASED_USE_MSR_BITMAPS |
 	      CPU_BASED_ACTIVATE_SECONDARY_CONTROLS;
-	/* MSR_IA32_VMX_PROCBASED_CTLS 决定 Processor-based primary 控制字段 */
+	/* MSR_IA32_VMX_PROCBASED_CTLS 决定 Processor-based primary 控制字段是否启用 */
 	if (adjust_vmx_controls(min, opt, MSR_IA32_VMX_PROCBASED_CTLS,
 				&_cpu_based_exec_control) < 0)
 		return -EIO;
@@ -2518,6 +2518,9 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 		_cpu_based_exec_control &= ~CPU_BASED_CR8_LOAD_EXITING &
 					   ~CPU_BASED_CR8_STORE_EXITING;
 #endif
+	/*
+	 * 如果打开了 secondary 
+	 */
 	if (_cpu_based_exec_control & CPU_BASED_ACTIVATE_SECONDARY_CONTROLS) {
 		min2 = 0;
 		opt2 = SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES |
@@ -2545,7 +2548,7 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 			SECONDARY_EXEC_BUS_LOCK_DETECTION;
 		if (cpu_has_sgx())
 			opt2 |= SECONDARY_EXEC_ENCLS_EXITING;
-		/* MSR_IA32_VMX_PROCBASED_CTLS2 决定 Processor-based secondary 控制字段 */
+		/* MSR_IA32_VMX_PROCBASED_CTLS2 决定 Processor-based secondary 控制字段是否可用 */
 		if (adjust_vmx_controls(min2, opt2,
 					MSR_IA32_VMX_PROCBASED_CTLS2,
 					&_cpu_based_2nd_exec_control) < 0)
@@ -5602,6 +5605,9 @@ static int handle_monitor_trap(struct kvm_vcpu *vcpu)
 	return 1;
 }
 
+/* 
+ * caller kvm_vmx_exit_handlers[]
+ */
 static int handle_invpcid(struct kvm_vcpu *vcpu)
 {
 	u32 vmx_instruction_info;
@@ -6541,7 +6547,7 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 
 	/* if exit due to PF check for async PF */
 	if (is_page_fault(intr_info))
-		/* 在没有启动 CONFIG_KVM_GUEST      半虚拟化的情况下， kvm_read_and_reset_apf_flags          只会返回零 */
+		/* 在没有启动 CONFIG_KVM_GUEST      半虚拟化的情况下， kvm_read_and_reset_apf_flags 只会返回零 */
 		vmx->vcpu.arch.apf.host_apf_flags = kvm_read_and_reset_apf_flags();
 	/* Handle machine checks before interrupts are enabled */
 	else if (is_machine_check(intr_info))
@@ -6563,7 +6569,7 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 * )
 *
 *
-* (?todo01?: 在没有开启posted interrus的情况下，所有外部中断都由host处理了，
+* (?todo?:01: 在没有开启posted interrus的情况下，所有外部中断都由host处理了，
 * 那guest怎么接受到中断的？比如异步read()后如何通知guest？
 * 或是外设(比如鼠标)等产生的中断如何传递到guest的？)
 *
@@ -6584,7 +6590,7 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	    "KVM: unexpected VM-Exit interrupt info: 0x%x", intr_info))
 		return;
 	/* 
-	 * (?todo02-answer?: 这里IDTE指向的函数是host原有的handler，还是KVM的函数，
+	 * (?todo-answer?:02: 这里IDTE指向的函数是host原有的handler，还是KVM的函数，
 	 * 可能会在函数里面给guest注入中断等逻辑？(纯软件虚拟化的时候)，与todo01有联系？)
 	 * (answer: 看了 vmx_init 大概的调用路径，kvm应该是没有修改 IDT handler的
 	 * 中断虚拟化纯软件是实现不了的，所以中断虚拟化没有纯软件实现的时候，
@@ -6701,6 +6707,9 @@ static void __vmx_complete_interrupts(struct kvm_vcpu *vcpu,
 	idtv_info_valid = idt_vectoring_info & VECTORING_INFO_VALID_MASK;
 
 	vcpu->arch.nmi_injected = false;
+	/* 
+	 * 重置并不直接丢弃nr信息哦，只是把标识置位false，
+	 */
 	kvm_clear_exception_queue(vcpu);
 	kvm_clear_interrupt_queue(vcpu);
 
@@ -7039,13 +7048,20 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 
 	trace_kvm_exit(vmx->exit_reason.full, vcpu, KVM_ISA_VMX);
 
+	/* 
+	 * 如果是在vm-entry 中断delivery时引发的vm-exit，则不执行下面的
+	 * vmx_complete_interrupts ,因为他会重置 vcpu->arch.exception 和
+	 * vcpu->arch.interrupt 状态。在重新注入中断的时候，需要用这些信息来判断
+	 * 是否应该引发 triple fault
+	 */
 	if (unlikely(vmx->exit_reason.failed_vmentry))
 		return EXIT_FASTPATH_NONE;
 
 	vmx->loaded_vmcs->launched = 1;
 
 	vmx_recover_nmi_blocking(vmx);
-	/* 执行中断注入后的后续操作，
+	/* 
+	 * 执行中断注入后的后续操作，
 	 * 比如重置vcpu->arch.exception和vcpu->arch.interrupt里面的信息， 
 	 * 以方便下次重新注入
 	 */
@@ -8204,6 +8220,9 @@ static void vmx_cleanup_l1d_flush(void)
 	l1tf_vmx_mitigation = VMENTER_L1D_FLUSH_AUTO;
 }
 
+/* caller vmx_init &
+ * 		  module_exit(vmx_exit)
+ */
 static void vmx_exit(void)
 {
 #ifdef CONFIG_KEXEC_CORE

@@ -137,9 +137,10 @@ static inline void kvm_queue_interrupt(struct kvm_vcpu *vcpu, u8 vector,
 	vcpu->arch.interrupt.nr = vector;
 }
 
-/* caller kvm_vcpu_reset &
+/* 
+ * caller kvm_vcpu_reset &
+ * 		  __vmx_complete_interrupts & svm_complete_interrupts & 
  * 	 	  nested_vmx_vmexit & nested_svm_vmexit &
- * 		  __vmx_complete_interrupts & svm_complete_interrupts &
  * 		  handle_task_switch & task_switch_interception 
  *  	  
  */ 		  
