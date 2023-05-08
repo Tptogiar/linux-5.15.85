@@ -1929,6 +1929,7 @@ void kvm_lapic_expired_hv_timer(struct kvm_vcpu *vcpu)
 
 	preempt_disable();
 	/* If the preempt notifier has already run, it also called apic_timer_expired */
+	/* 已经执行过 */
 	if (!apic->lapic_timer.hv_timer_in_use)
 		goto out;
 	WARN_ON(rcuwait_active(&vcpu->wait));

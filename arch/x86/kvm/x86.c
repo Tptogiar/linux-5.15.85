@@ -216,6 +216,7 @@ EXPORT_SYMBOL_GPL(host_efer);
 bool __read_mostly allow_smaller_maxphyaddr = 0;
 EXPORT_SYMBOL_GPL(allow_smaller_maxphyaddr);
 
+/* initializer hardware_setup */
 bool __read_mostly enable_apicv = true;
 EXPORT_SYMBOL_GPL(enable_apicv);
 
@@ -9139,9 +9140,16 @@ static void kvm_inject_exception(struct kvm_vcpu *vcpu)
 static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 {
 	int r;
-	/* (?todo?: 如果遇到需要注入多个事件怎么办？
+	/* (?todo-answer?: 如果遇到需要注入多个事件怎么办？
 	 * 注入第一个事件后，后面的事件会被怎么处理？)
-	 * (answer: )
+	 * (answer: 注入一个事件后，会把 can_inject 标记为false，当下次要注入事件时，会该标志位，
+	 * 如果 can_inject 为false，则把 req_immediate_exit 标记为true，最终会把 vcpu_vmx 中的 req_immediate_exit
+	 * 标记为true ,最终会在 vmx_vcpu_run 中在进入guest前，更新 preemption timer的值为0，使得
+	 * 使得在进入guest后马上会退出，以便注入下一个事件)
+	 *
+	 *
+	 * (?todo?: preemption timer是在何时开始倒计时的？在事件delivery完成之后吗？
+	 * 还是说在vm-entry的那一刻就开始倒计时？)
 	 */
 	bool can_inject = true;
 
@@ -9257,6 +9265,7 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 			static_call(kvm_x86_enable_smi_window)(vcpu);
 	}
 
+	/* 有需要注入的NMI */
 	if (vcpu->arch.nmi_pending) {
 		r = can_inject ? static_call(kvm_x86_nmi_allowed)(vcpu, true) : -EBUSY;
 		if (r < 0)
@@ -9967,8 +9976,9 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	}
 
 	if (req_immediate_exit) {
+		/* 如果还没有别的流程标记为需要注入事件，就标记一下，可以重复标记 */
 		kvm_make_request(KVM_REQ_EVENT, vcpu);
-		/* vmx_request_immediate_exit */
+		/* vmx_request_immediate_exit  __kvm_request_immediate_exit */
 		static_call(kvm_x86_request_immediate_exit)(vcpu);
 	}
 
@@ -11033,6 +11043,7 @@ int kvm_arch_vcpu_precreate(struct kvm *kvm, unsigned int id)
 	return 0;
 }
 
+/* caller kvm_vm_ioctl_create_vcpu */
 int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 {
 	struct page *page;
@@ -11066,6 +11077,7 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 		 * is guaranteed to run with a deterministic value, the request
 		 * will ensure the vCPU gets the correct state before VM-Entry.
 		 */
+		/*  */
 		if (enable_apicv) {
 			vcpu->arch.apicv_active = true;
 			kvm_make_request(KVM_REQ_APICV_UPDATE, vcpu);

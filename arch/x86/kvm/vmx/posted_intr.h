@@ -6,6 +6,7 @@
 #define POSTED_INTR_SN  1
 
 /* Posted-Interrupt Descriptor */
+/* Figure 9-11.  Posted Interrupt Descriptor Format */
 struct pi_desc {
 	u32 pir[8];     /* Posted interrupt requested */
 	union {

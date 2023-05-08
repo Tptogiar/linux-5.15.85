@@ -8,6 +8,9 @@
  *   Avi Kivity   <avi@redhat.com>
  *   Gleb Natapov <gleb@redhat.com>
  */
+
+/* performance monitor unit */
+
 #include <linux/types.h>
 #include <linux/kvm_host.h>
 #include <linux/perf_event.h>

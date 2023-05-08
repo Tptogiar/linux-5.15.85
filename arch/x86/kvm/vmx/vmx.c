@@ -1369,6 +1369,7 @@ void vmx_vcpu_load_vmcs(struct kvm_vcpu *vcpu, int cpu,
  * Switches to specified vcpu, until a matching vcpu_put(), but assumes
  * vcpu mutex is already taken.
  */
+/* caller vmx_create_vcpu */
 static void vmx_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4423,6 +4424,7 @@ static void init_vmcs(struct vcpu_vmx *vmx)
 	if (cpu_has_secondary_exec_ctrls())
 		secondary_exec_controls_set(vmx, vmx_secondary_exec_control(vmx));
 
+	/* */
 	if (kvm_vcpu_apicv_active(&vmx->vcpu)) {
 		vmcs_write64(EOI_EXIT_BITMAP0, 0);
 		vmcs_write64(EOI_EXIT_BITMAP1, 0);
@@ -5667,6 +5669,9 @@ static int handle_pml_full(struct kvm_vcpu *vcpu)
 	return 1;
 }
 
+/* caller handle_preemption_timer &
+ * 		  vmx_exit_handlers_fastpath
+ */
 static fastpath_t handle_fastpath_preemption_timer(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -5680,6 +5685,9 @@ static fastpath_t handle_fastpath_preemption_timer(struct kvm_vcpu *vcpu)
 	return EXIT_FASTPATH_NONE;
 }
 
+/* caller kvm_vmx_exit_handlers[]
+ * 		  __vmx_handle_exit
+ */
 static int handle_preemption_timer(struct kvm_vcpu *vcpu)
 {
 	handle_fastpath_preemption_timer(vcpu);
@@ -5734,14 +5742,14 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_EXCEPTION_NMI]           = handle_exception_nmi,
 	[EXIT_REASON_EXTERNAL_INTERRUPT]      = handle_external_interrupt,
 	[EXIT_REASON_TRIPLE_FAULT]            = handle_triple_fault,
-	[EXIT_REASON_NMI_WINDOW]	      = handle_nmi_window,
+	[EXIT_REASON_NMI_WINDOW]	      = handle_nmi_window,          /* window */
 	[EXIT_REASON_IO_INSTRUCTION]          = handle_io,
 	[EXIT_REASON_CR_ACCESS]               = handle_cr,
 	[EXIT_REASON_DR_ACCESS]               = handle_dr,
 	[EXIT_REASON_CPUID]                   = kvm_emulate_cpuid,
 	[EXIT_REASON_MSR_READ]                = kvm_emulate_rdmsr,
 	[EXIT_REASON_MSR_WRITE]               = kvm_emulate_wrmsr,
-	[EXIT_REASON_INTERRUPT_WINDOW]        = handle_interrupt_window,
+	[EXIT_REASON_INTERRUPT_WINDOW]        = handle_interrupt_window,    /* window */
 	[EXIT_REASON_HLT]                     = kvm_emulate_halt,
 	[EXIT_REASON_INVD]		      = kvm_emulate_invd,
 	[EXIT_REASON_INVLPG]		      = handle_invlpg,
@@ -6187,6 +6195,11 @@ static int __vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 	if (exit_reason.basic >= kvm_vmx_max_exit_handlers)
 		goto unexpected_vmexit;
 #ifdef CONFIG_RETPOLINE
+	/* (?todo?: 这里已经调用部分vm-exit的reason的handler了，理论上 kvm_vmx_exit_handlers 中reason可以不用
+	 * 指向handler了，但是这里是根据 CONFIG_RETPOLINE 条件编译的，这里语句不一定存在。那时候使用会被编译进去？
+	 * 什么是 CONFIG_RETPOLINE )
+	 *
+	 */
 	if (exit_reason.basic == EXIT_REASON_MSR_WRITE)
 		return kvm_emulate_wrmsr(vcpu);
 	else if (exit_reason.basic == EXIT_REASON_PREEMPTION_TIMER)
@@ -6547,7 +6560,9 @@ static void handle_exception_nmi_irqoff(struct vcpu_vmx *vmx)
 
 	/* if exit due to PF check for async PF */
 	if (is_page_fault(intr_info))
-		/* 在没有启动 CONFIG_KVM_GUEST      半虚拟化的情况下， kvm_read_and_reset_apf_flags 只会返回零 */
+		/* 在没有启动 CONFIG_KVM_GUEST      半虚拟化的情况下， kvm_read_and_reset_apf_flags 只会返回零 
+		* 在 handle_exception_nmi kvm_handle_page_fault等地方会用到
+		*/
 		vmx->vcpu.arch.apf.host_apf_flags = kvm_read_and_reset_apf_flags();
 	/* Handle machine checks before interrupts are enabled */
 	else if (is_machine_check(intr_info))
@@ -6790,12 +6805,18 @@ static void atomic_switch_perf_msrs(struct vcpu_vmx *vmx)
 					msrs[i].host, false);
 }
 
+/* hv -> hypervisor 
+ * caller vmx_vcpu_run 
+ */
 static void vmx_update_hv_timer(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u64 tscl;
 	u32 delta_tsc;
 
+	/* 在注入一个事件后，还有别的事件需要注入，则把 VMX_PREEMPTION_TIMER_VALUE 置为0，
+	 * 快速vm-exit以便注入下一个事件 
+	 */
 	if (vmx->req_immediate_exit) {
 		vmcs_write32(VMX_PREEMPTION_TIMER_VALUE, 0);
 		vmx->loaded_vmcs->hv_timer_soft_disabled = false;
@@ -6971,8 +6992,9 @@ static fastpath_t vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	atomic_switch_perf_msrs(vmx);
 	if (intel_pmu_lbr_is_enabled(vcpu))
 		vmx_passthrough_lbr_msrs(vcpu);
-
+	
 	if (enable_preemption_timer)
+		/* 进入guest前更新preemption timer */
 		vmx_update_hv_timer(vcpu);
 
 	kvm_wait_lapic_expire(vcpu);
@@ -7085,8 +7107,7 @@ static void vmx_free_vcpu(struct kvm_vcpu *vcpu)
 	free_loaded_vmcs(vmx->loaded_vmcs);
 }
 
-/* kvm_arch_vcpu_create
-*/
+/* caller kvm_arch_vcpu_create */
 static int vmx_create_vcpu(struct kvm_vcpu *vcpu)
 {
 	struct vmx_uret_msr *tsx_ctrl;
@@ -8101,6 +8122,7 @@ static __init int hardware_setup(void)
 		ple_window_shrink = 0;
 	}
 
+	/* */
 	if (!cpu_has_vmx_apicv())
 		enable_apicv = 0;
 	if (!enable_apicv)

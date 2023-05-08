@@ -220,6 +220,10 @@ static inline void native_store_gdt(struct desc_ptr *dtr)
 	asm volatile("sgdt %0":"=m" (*dtr));
 }
 
+/* caller hardware_setup
+ *		  show_fault_oops
+ *		  __save_processor_state
+ */
 static inline void store_idt(struct desc_ptr *dtr)
 {
 	asm volatile("sidt %0":"=m" (*dtr));

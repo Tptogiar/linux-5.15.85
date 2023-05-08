@@ -4061,7 +4061,7 @@ int kvm_handle_page_fault(struct kvm_vcpu *vcpu, u64 error_code,
 			kvm_mmu_unprotect_page_virt(vcpu, fault_address);
 		r = kvm_mmu_page_fault(vcpu, fault_address, error_code, insn,
 				insn_len);
-	} else if (flags & KVM_PV_REASON_PAGE_NOT_PRESENT) { /* 开启了kvm半虚拟化  & page no present */
+	} else if (flags & KVM_PV_REASON_PAGE_NOT_PRESENT) { /* 开启了kvm半虚拟化  & 且是APF的 page no present 流程 */
 		vcpu->arch.apf.host_apf_flags = 0;
 		/* (?todo?: 为什么这里要关中断后开启) */
 		local_irq_disable();

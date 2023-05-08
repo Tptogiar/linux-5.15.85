@@ -17,11 +17,17 @@
 static DEFINE_PER_CPU(struct list_head, blocked_vcpu_on_cpu);
 static DEFINE_PER_CPU(raw_spinlock_t, blocked_vcpu_on_cpu_lock);
 
+/* caller vmx_vcpu_pi_load
+ * 		  vmx_vcpu_pi_put
+ * 		  __pi_post_block
+ * 		  pi_wakeup_handler
+ * 		  pi_wakeup_handlerpi_wakeup_handler
+ */
 static inline struct pi_desc *vcpu_to_pi_desc(struct kvm_vcpu *vcpu)
 {
 	return &(to_vmx(vcpu)->pi_desc);
 }
-
+/* caller  vmx_vcpu_load */
 void vmx_vcpu_pi_load(struct kvm_vcpu *vcpu, int cpu)
 {
 	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
@@ -78,6 +84,10 @@ after_clear_sn:
 		pi_set_on(pi_desc);
 }
 
+/* caller vmx_vcpu_pi_put 
+ * 		  pi_pre_block
+ * 		  pi_update_irte
+ */
 static bool vmx_can_use_vtd_pi(struct kvm *kvm)
 {
 	return irqchip_in_kernel(kvm) && enable_apicv &&
@@ -85,6 +95,7 @@ static bool vmx_can_use_vtd_pi(struct kvm *kvm)
 		irq_remapping_cap(IRQ_POSTING_CAP);
 }
 
+/* caller vmx_vcpu_put */
 void vmx_vcpu_pi_put(struct kvm_vcpu *vcpu)
 {
 	struct pi_desc *pi_desc = vcpu_to_pi_desc(vcpu);
@@ -141,6 +152,7 @@ static void __pi_post_block(struct kvm_vcpu *vcpu)
  *   this case, return 1, otherwise, return 0.
  *
  */
+/* caller vmx_pre_block */
 int pi_pre_block(struct kvm_vcpu *vcpu)
 {
 	unsigned int dest;
