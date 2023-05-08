@@ -121,7 +121,10 @@ static inline void kvm_clear_exception_queue(struct kvm_vcpu *vcpu)
 
 /* 
  * (?todo-answer?: 这个函数的目的是做什么，这里将中断信息记录起来之后给谁用？怎么用？)
- * (answer: 一方面是在 vmx_inject_irq 真正把中断信息写入vm-entry interrupt information 时会用以判断中断类型，获取中断号
+ * (answer: 
+ * 一方面是在 vmx_inject_irq 真正把中断信息写入vm-entry interrupt information 时
+ * 会用以判断中断类型，获取中断号
+ * 
  * 另一方面，是用以标记 vm-entry interrupt information 是否已经被写入信息了(在此次vm-exit内))
  * 
  * caller kvm_vcpu_ioctl_interrupt & 

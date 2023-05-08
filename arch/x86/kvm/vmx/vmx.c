@@ -80,6 +80,7 @@ MODULE_DEVICE_TABLE(x86cpu, vmx_cpu_id);
 bool __read_mostly enable_vpid = 1;
 module_param_named(vpid, enable_vpid, bool, 0444);
 
+/* initializer hardware_setup */
 static bool __read_mostly enable_vnmi = 1;
 module_param_named(vnmi, enable_vnmi, bool, S_IRUGO);
 
@@ -4511,6 +4512,7 @@ static void init_vmcs(struct vcpu_vmx *vmx)
 	vmx_setup_uret_msrs(vmx);
 }
 
+/* caller kvm_vcpu_reset */
 static void vmx_vcpu_reset(struct kvm_vcpu *vcpu, bool init_event)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4574,6 +4576,16 @@ static void vmx_enable_irq_window(struct kvm_vcpu *vcpu)
 /* caller inject_pending_event */
 static void vmx_enable_nmi_window(struct kvm_vcpu *vcpu)
 {
+	/* 没有开启virualt NMI 或是 blocking by STI 
+	 * (只有在“NMI exiting”以及“virtual-NMIs”都为1时,“NMI-window exiting”才能被置位)
+	 * 
+	 * (?analyse?: 这里为什么是打开 interrupt window ?
+	 * 比如guest中执行了STI执行，但是STI执行的下一条指令还没执行完毕，
+	 * 还处于blocking by STI的状态，但是这个时候刚好vm-exit出来了，这个时候
+	 * guest state area中的interruptibility info 中的blocking by STI 就会被置为，
+	 * 这个时候如果给guest注入事件就会比阻塞，所以需要把中断窗口打开，等blocking接触之后
+	 * 就会自动exit出来，这个时候就可以注入事件了)
+	 */
 	if (!enable_vnmi ||
 	    vmcs_read32(GUEST_INTERRUPTIBILITY_INFO) & GUEST_INTR_STATE_STI) {
 		vmx_enable_irq_window(vcpu);
@@ -4679,7 +4691,9 @@ void vmx_set_nmi_mask(struct kvm_vcpu *vcpu, bool masked)
 					GUEST_INTR_STATE_NMI);
 	}
 }
-
+/* caller vmx_check_nested_events
+ * 		  vmx_nmi_allowed
+ */
 bool vmx_nmi_blocked(struct kvm_vcpu *vcpu)
 {
 	if (is_guest_mode(vcpu) && nested_exit_on_nmi(vcpu))
@@ -4693,6 +4707,9 @@ bool vmx_nmi_blocked(struct kvm_vcpu *vcpu)
 		 GUEST_INTR_STATE_NMI));
 }
 
+/* caller inject_pending_event
+ *		  kvm_vcpu_has_events
+ */
 static int vmx_nmi_allowed(struct kvm_vcpu *vcpu, bool for_injection)
 {
 	if (to_vmx(vcpu)->nested.nested_run_pending)
@@ -4952,6 +4969,7 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			 */
 			if (is_icebp(intr_info))
 				WARN_ON(!skip_emulated_instruction(vcpu));
+			/* IF=1 && blocking by STI && blocking by MOV SS */
 			else if ((vmx_get_rflags(vcpu) & X86_EFLAGS_TF) &&
 				 (vmcs_read32(GUEST_INTERRUPTIBILITY_INFO) &
 				  (GUEST_INTR_STATE_STI | GUEST_INTR_STATE_MOV_SS)))
@@ -5675,7 +5693,7 @@ static int handle_pml_full(struct kvm_vcpu *vcpu)
 static fastpath_t handle_fastpath_preemption_timer(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
-
+	/* 当这个超时不是有意而为之的时候 */
 	if (!vmx->req_immediate_exit &&
 	    !unlikely(vmx->loaded_vmcs->hv_timer_soft_disabled)) {
 		kvm_lapic_expired_hv_timer(vcpu);

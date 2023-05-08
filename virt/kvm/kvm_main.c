@@ -1045,6 +1045,7 @@ int __weak kvm_arch_create_vm_debugfs(struct kvm *kvm)
 	return 0;
 }
 
+/* caller kvm_dev_ioctl_create_vm */
 static struct kvm *kvm_create_vm(unsigned long type)
 {
 	struct kvm *kvm = kvm_arch_alloc_vm();
@@ -3232,6 +3233,7 @@ static void shrink_halt_poll_ns(struct kvm_vcpu *vcpu)
 	trace_kvm_halt_poll_ns_shrink(vcpu->vcpu_id, val, old);
 }
 
+/* caller kvm_vcpu_block */
 static int kvm_vcpu_check_block(struct kvm_vcpu *vcpu)
 {
 	int ret = -EINTR;
@@ -3266,6 +3268,7 @@ update_halt_poll_stats(struct kvm_vcpu *vcpu, u64 poll_ns, bool waited)
 /*
  * The vCPU has executed a HLT instruction with in-kernel mode enabled.
  */
+/* caller vcpu_block */
 void kvm_vcpu_block(struct kvm_vcpu *vcpu)
 {
 	bool halt_poll_allowed = !kvm_arch_no_poll(vcpu);
@@ -3621,6 +3624,7 @@ static struct file_operations kvm_vcpu_fops = {
 /*
  * Allocates an inode for the vcpu.
  */
+/* caller kvm_vm_ioctl_create_vcpu */
 static int create_vcpu_fd(struct kvm_vcpu *vcpu)
 {
 	char name[8 + 1 + ITOA_MAX_LEN + 1];
@@ -4404,7 +4408,15 @@ static int kvm_vm_ioctl_get_stats_fd(struct kvm *kvm)
 	return fd;
 }
 
-/* vm相关 */
+/* vm相关 
+ * use kvm_vm_fops
+ * caller kvm_vm_compat_ioctl
+ * 
+ *
+ * (?todo?: qemu是如何调用到这里的? 
+ * qemu怎么拿到与这个 kvm_vm_fops 相对应的fd的？
+ * 与 "/dev/kvm" 是同一个 fd?) 
+ */
 static long kvm_vm_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {
@@ -4677,6 +4689,10 @@ static long kvm_vm_compat_ioctl(struct file *filp,
 }
 #endif
 
+/* use kvm_init &
+ *	   kvm_dev_ioctl_create_vm &
+ * 	   file_is_kvm
+ */
 static struct file_operations kvm_vm_fops = {
 	.release        = kvm_vm_release,
 	.unlocked_ioctl = kvm_vm_ioctl,
@@ -4690,6 +4706,7 @@ bool file_is_kvm(struct file *file)
 }
 EXPORT_SYMBOL_GPL(file_is_kvm);
 
+/* kvm_dev_ioctl */
 static int kvm_dev_ioctl_create_vm(unsigned long type)
 {
 	int r;
@@ -4739,7 +4756,9 @@ put_kvm:
 	return r;
 }
 
-/* /dev/kvm 接口 */
+/* /dev/kvm 接口 
+ * caller kvm_chardev_ops
+ */
 static long kvm_dev_ioctl(struct file *filp,
 			  unsigned int ioctl, unsigned long arg)
 {
@@ -4780,6 +4799,9 @@ out:
 	return r;
 }
 
+/* use kvm_dev & 
+ *	   kvm_init
+ */
 static struct file_operations kvm_chardev_ops = {
 	.unlocked_ioctl = kvm_dev_ioctl,
 	.llseek		= noop_llseek,

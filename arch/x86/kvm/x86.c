@@ -4264,6 +4264,7 @@ int kvm_vm_ioctl_check_extension(struct kvm *kvm, long ext)
 
 }
 
+/* caller kvm_dev_ioctl */
 long kvm_arch_dev_ioctl(struct file *filp,
 			unsigned int ioctl, unsigned long arg)
 {
@@ -9176,8 +9177,9 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 	/* 
 	 * 如果没有异常在等待注入的时候才注入NMI或是中断 */
 	else if (!vcpu->arch.exception.pending) {
-		/* (?todo?: 会不会有同时有NMI和interrupt的情况？)
-		 * 
+		/* (?todo-answer?: 会不会有同时有NMI和interrupt的情况？)
+		 * (answer: NMI和interrupt不会同时出现，也就是说当interrupt为NMI的时候，
+		 * vm-exit的reason就表现为NMI 
 		 */
 		if (vcpu->arch.nmi_injected) {
 			/* vmx_inject_nmi  svm_inject_nmi */
@@ -9265,8 +9267,9 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 			static_call(kvm_x86_enable_smi_window)(vcpu);
 	}
 
-	/* 有需要注入的NMI */
+	/* 如果还有NMI在等待注入 */
 	if (vcpu->arch.nmi_pending) {
+		/* vmx_nmi_allowed svm_nmi_allowed */
 		r = can_inject ? static_call(kvm_x86_nmi_allowed)(vcpu, true) : -EBUSY;
 		if (r < 0)
 			goto out;
@@ -9277,7 +9280,16 @@ static int inject_pending_event(struct kvm_vcpu *vcpu, bool *req_immediate_exit)
 			can_inject = false;
 			WARN_ON(static_call(kvm_x86_nmi_allowed)(vcpu, true) < 0);
 		}
+		/* 已经注入过了，但是还有没注入的，则打开 nmi window，
+		 * vm-entry完成后将自动触发vm-exit
+		 * 
+		 * 且因为上面 kvm_x86_nmi_allowed 已经判断过可以注入nmi了，所以是通过
+		 * nmi window 来使guest exit，而上面则是通过 req_immediate_exit 来使其vm-exit
+		 * 以为 kvm_x86_nmi_allowed 不一定为处，如果通过nmi window来使其退出，则vm-exit后
+		 * 走到nmi handler去了，不一定是对的
+		 */
 		if (vcpu->arch.nmi_pending)
+			/* vmx_enable_nmi_window svm_enable_nmi_window */
 			static_call(kvm_x86_enable_nmi_window)(vcpu);
 	}
 
@@ -9927,7 +9939,8 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 */
 	 
 	/* 关中断
-	 * (?todo?: 进入guest后的状态状态由  interruptibility state决定?  )
+	 * (?todo?: 进入guest后的可中断状态状态由  interruptibility state 决定? 
+	 * KVM 是如何处理这一部分的？会最终作用在进入guest后的EFLAG.IF上吗)
 	 *
 	 *
 	 * (?todo?: 为什么要先关中断？
@@ -10116,6 +10129,7 @@ out:
 	return r;
 }
 
+/* caller vcpu_run */
 static inline int vcpu_block(struct kvm *kvm, struct kvm_vcpu *vcpu)
 {
 	if (!kvm_arch_vcpu_runnable(vcpu) &&
@@ -10374,6 +10388,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 		}
 		kvm_clear_request(KVM_REQ_UNHALT, vcpu);
 		r = -EAGAIN;
+		/* 进程收到信号 */
 		if (signal_pending(current)) {
 			r = -EINTR;
 			kvm_run->exit_reason = KVM_EXIT_INTR;
@@ -11568,7 +11583,7 @@ void kvm_arch_free_vm(struct kvm *kvm)
 	vfree(kvm);
 }
 
-
+/* caller kvm_create_vm */
 int kvm_arch_init_vm(struct kvm *kvm, unsigned long type)
 {
 	int ret;
@@ -12076,6 +12091,7 @@ static inline bool kvm_guest_apic_has_interrupt(struct kvm_vcpu *vcpu)
 			static_call(kvm_x86_guest_apic_has_interrupt)(vcpu));
 }
 
+/* caller kvm_arch_vcpu_runnable */
 static inline bool kvm_vcpu_has_events(struct kvm_vcpu *vcpu)
 {
 	if (!list_empty_careful(&vcpu->async_pf.done))
@@ -12116,6 +12132,9 @@ static inline bool kvm_vcpu_has_events(struct kvm_vcpu *vcpu)
 	return false;
 }
 
+/* caller kvm_vcpu_check_block
+ * 		  vcpu_block 
+ */
 int kvm_arch_vcpu_runnable(struct kvm_vcpu *vcpu)
 {
 	return kvm_vcpu_running(vcpu) || kvm_vcpu_has_events(vcpu);

@@ -302,6 +302,7 @@ static inline void init_vmcs_host_state(void)
  * the host state fields. Some host state fields have fixed
  * values, and we set the corresponding guest state fields accordingly.
  */
+
 static inline void init_vmcs_guest_state(void *rip, void *rsp)
 {
 	vmwrite(GUEST_ES_SELECTOR, vmreadz(HOST_ES_SELECTOR));
