@@ -144,6 +144,9 @@ static inline bool is_error_page(struct page *page)
 /* 0~7位为1的掩码 */
 #define KVM_REQUEST_MASK           GENMASK(7,0)
 #define KVM_REQUEST_NO_WAKEUP      BIT(8)
+/* 如果设置了这个掩码，则需要等待确认
+ * 见文档 Waiting for Acknowledgements
+ */
 #define KVM_REQUEST_WAIT           BIT(9)
 /*
  * Architecture-independent vcpu->requests bit members
@@ -165,7 +168,7 @@ static inline bool is_error_page(struct page *page)
 bool kvm_make_vcpus_request_mask(struct kvm *kvm, unsigned int req,
 				 struct kvm_vcpu *except,
 				 unsigned long *vcpu_bitmap, cpumask_var_t tmp);
-bool kvm_make_all_cpus_request(struct kvm *kvm, unsigned int req);
+//for_read_code bool kvm_make_all_cpus_request(struct kvm *kvm, unsigned int req);
 bool kvm_make_all_cpus_request_except(struct kvm *kvm, unsigned int req,
 				      struct kvm_vcpu *except);
 bool kvm_make_cpus_request_mask(struct kvm *kvm, unsigned int req,
@@ -247,9 +250,31 @@ bool kvm_test_age_gfn(struct kvm *kvm, struct kvm_gfn_range *range);
 bool kvm_set_spte_gfn(struct kvm *kvm, struct kvm_gfn_range *range);
 #endif
 
+/* (?todo-answer?: 这里的guest mode指的是什么？
+ * 代码运行到这里，已经回到KV，逻辑cpu肯定已经回到root模式了，
+ * 所以这个肯定不是值逻辑cpu是不是guest模式，
+ * 注释中说 HF_GUEST_MASK 表示 VCPU is in guest-mode  
+ * 如果是指vcpu是不是出于guest模式的话，vcpu不是一直都是guest(no-root)模式吗，
+ * 难道这里判断的是vcpu是不是在内核态？) 
+ * (answer: 根模式和非根模式是对于逻辑CPU来说的，对于vCPU而言没有这一说
+ * 这里之所以定义vCPU的“IN_GUEST_MODE”，“OUTSIDE_GUEST_MODE”等，是从KVM的角度出发
+ * 的，“IN_GUEST_MODE”用于标识某个vCPU在准备好进入逻辑CPU运行后，进入逻辑CPU上运行。
+ * 但是在准备过程中， kvm_request_pending 之后需要做 local_irq_disable 这样的操作，之后才是进入逻辑CPU，
+ * 这个过程中，有这样状态的一些时刻存在:kvm_request_pending检查过了，不会在检查了，也 local_irq_disable 了
+ * 那对于这样的一些时刻，如果此时有其他逻辑CPU想要给这个vCPU注入事件是注入不了的，
+ * 所以就需要“ IN_GUEST_MODE ”这样的表示位来标记这个vCPU已经在准备进入了，其他逻辑CPU
+ * 检测到该vCPU是这样的状态的话，就可以考虑发一个IPI给该逻辑CPU
+ * 详见文档： Ensuring Requests Are Seen )
+ */
+
 enum {
 	OUTSIDE_GUEST_MODE,
 	IN_GUEST_MODE,
+	/* use in: kvm_vcpu_exit_request &
+	 * 		   kvm_vcpu_exiting_guest_mode
+	 * 
+	 * design: 见文档 IPI Reduction
+	 */
 	EXITING_GUEST_MODE,
 	READING_SHADOW_PAGE_TABLES,
 };
@@ -581,6 +606,9 @@ struct kvm_hv_sint {
 struct kvm_kernel_irq_routing_entry {
 	u32 gsi;
 	u32 type;
+	/* this can set can be 
+	 * kvm_set_ioapic_irq  or kvm_set_pic_irq 
+	 */
 	int (*set)(struct kvm_kernel_irq_routing_entry *e,
 		   struct kvm *kvm, int irq_source_id, int level,
 		   bool line_status);
@@ -603,6 +631,7 @@ struct kvm_kernel_irq_routing_entry {
 };
 
 #ifdef CONFIG_HAVE_KVM_IRQ_ROUTING
+/* */
 struct kvm_irq_routing_table {
 	int chip[KVM_NR_IRQCHIPS][KVM_IRQCHIP_NUM_PINS];
 	u32 nr_rt_entries;
@@ -1157,7 +1186,7 @@ void kvm_arch_sched_in(struct kvm_vcpu *vcpu, int cpu);
 void kvm_arch_vcpu_load(struct kvm_vcpu *vcpu, int cpu);
 void kvm_arch_vcpu_put(struct kvm_vcpu *vcpu);
 int kvm_arch_vcpu_precreate(struct kvm *kvm, unsigned int id);
-int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu);
+//for_read_code int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu);
 void kvm_arch_vcpu_postcreate(struct kvm_vcpu *vcpu);
 void kvm_arch_vcpu_destroy(struct kvm_vcpu *vcpu);
 
@@ -1739,6 +1768,9 @@ static inline void kvm_make_request(int req, struct kvm_vcpu *vcpu)
 	set_bit(req & KVM_REQUEST_MASK, (void *)&vcpu->requests);
 }
 
+/* caller vcpu_enter_guest &
+ * 		  kvm_vcpu_exit_request 
+ */
 static inline bool kvm_request_pending(struct kvm_vcpu *vcpu)
 {
 	return READ_ONCE(vcpu->requests);
@@ -1754,6 +1786,7 @@ static inline void kvm_clear_request(int req, struct kvm_vcpu *vcpu)
 	clear_bit(req & KVM_REQUEST_MASK, (void *)&vcpu->requests);
 }
 
+/* caller vcpu_enter_guest & and so on */
 static inline bool kvm_check_request(int req, struct kvm_vcpu *vcpu)
 {
 	if (kvm_test_request(req, vcpu)) {

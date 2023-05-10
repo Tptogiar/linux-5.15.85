@@ -2014,6 +2014,7 @@ int kvm_emulate_monitor(struct kvm_vcpu *vcpu)
 }
 EXPORT_SYMBOL_GPL(kvm_emulate_monitor);
 
+/* caller vcpu_enter_guest  */
 static inline bool kvm_vcpu_exit_request(struct kvm_vcpu *vcpu)
 {
 	xfer_to_guest_mode_prepare();
@@ -5712,6 +5713,7 @@ void kvm_arch_sync_dirty_log(struct kvm *kvm, struct kvm_memory_slot *memslot)
 		kvm_vcpu_kick(vcpu);
 }
 
+/* caller kvm_vm_ioctl */
 int kvm_vm_ioctl_irq_line(struct kvm *kvm, struct kvm_irq_level *irq_event,
 			bool line_status)
 {
@@ -6059,6 +6061,7 @@ int kvm_arch_pm_notifier(struct kvm *kvm, unsigned long state)
 }
 #endif /* CONFIG_HAVE_KVM_PM_NOTIFIER */
 
+/* caller kvm_vm_ioctl */
 long kvm_arch_vm_ioctl(struct file *filp,
 		       unsigned int ioctl, unsigned long arg)
 {
@@ -6112,10 +6115,12 @@ set_identity_unlock:
 		if (kvm->created_vcpus)
 			goto create_irqchip_unlock;
 
+		/* 创建PIC */
 		r = kvm_pic_init(kvm);
 		if (r)
 			goto create_irqchip_unlock;
 
+		/* 创建I/O APIC */
 		r = kvm_ioapic_init(kvm);
 		if (r) {
 			kvm_pic_destroy(kvm);
@@ -9599,6 +9604,9 @@ void kvm_make_scan_ioapic_request(struct kvm *kvm)
 	kvm_make_all_cpus_request(kvm, KVM_REQ_SCAN_IOAPIC);
 }
 
+/* caller vcpu_enter_guest &
+ * 		  svm_vcpu_unblocking
+ */
 void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu)
 {
 	bool activate;
@@ -9614,6 +9622,7 @@ void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu)
 
 	vcpu->arch.apicv_active = activate;
 	kvm_apic_update_apicv(vcpu);
+	/* vmx_refresh_apicv_exec_ctrl svm_refresh_apicv_exec_ctrl */
 	static_call(kvm_x86_refresh_apicv_exec_ctrl)(vcpu);
 
 	/*
@@ -9621,6 +9630,9 @@ void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu)
 	 * pending. At the same time, KVM_REQ_EVENT may not be set as APICv was
 	 * still active when the interrupt got accepted. Make sure
 	 * inject_pending_event() is called to check for that.
+	 */
+	/* vAPIC被关闭的时候，可能还有事件需要注入，调用 kvm_make_request ，
+	 * 使得在 vcpu_enter_guest时可以检测到
 	 */
 	if (!vcpu->arch.apicv_active)
 		kvm_make_request(KVM_REQ_EVENT, vcpu);
@@ -9932,11 +9944,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	/* vmx_prepare_switch_to_guest */
 	static_call(kvm_x86_prepare_guest_switch)(vcpu);
 
-	/*
-	 * Disable IRQs before setting IN_GUEST_MODE.  Posted interrupt
-	 * IPI are then delayed after guest entry, which ensures that they
-	 * result in virtual interrupt delivery.
-	 */
+
 	 
 	/* 关中断
 	 * (?todo?: 进入guest后的可中断状态状态由  interruptibility state 决定? 
@@ -9948,6 +9956,11 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	 * https://github.com/torvalds/linux/commit/b95234c840045b7c72380fd14c59416af28fcb02
 	 * )
 	 *
+	 */
+	 /*
+	 * Disable IRQs before setting IN_GUEST_MODE.  Posted interrupt
+	 * IPI are then delayed after guest entry, which ensures that they
+	 * result in virtual interrupt delivery.
 	 */
 	local_irq_disable();
 	vcpu->mode = IN_GUEST_MODE;
@@ -9977,7 +9990,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	if (kvm_lapic_enabled(vcpu))
 		static_call_cond(kvm_x86_sync_pir_to_irr)(vcpu);
 
-	/* 如果 vcpu->requests   中发现还有未处理的请求 */
+	/* 检查是否需要退出，如果 vcpu->requests   中发现还有未处理的请求 */
 	if (kvm_vcpu_exit_request(vcpu)) {
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		smp_wmb();
@@ -11092,8 +11105,11 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 		 * is guaranteed to run with a deterministic value, the request
 		 * will ensure the vCPU gets the correct state before VM-Entry.
 		 */
-		/*  */
-		if (enable_apicv) {
+		/* 这个enable_apicv 的enable情况是在 hard_setup 中检查 vmcs_config 而判断的，
+		 * 但是要最终起作用还得设置在vmx里面，所以需要调用 kvm_make_request ，以便在
+		 * vcpu_enter_guest 中更新vmx的相关feild(与vAPIC相关)
+		 */
+		if (enable_apicv) {  
 			vcpu->arch.apicv_active = true;
 			kvm_make_request(KVM_REQ_APICV_UPDATE, vcpu);
 		}
@@ -11150,6 +11166,7 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 	vcpu->arch.hv_root_tdp = INVALID_PAGE;
 #endif
 
+	/* vmx_create_vcpu svm_create_vcpu */
 	r = static_call(kvm_x86_vcpu_create)(vcpu);
 	if (r)
 		goto free_guest_fpu;

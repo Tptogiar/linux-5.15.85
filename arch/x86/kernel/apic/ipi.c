@@ -62,6 +62,8 @@ void apic_send_IPI_allbutself(unsigned int vector)
  * wastes no time serializing anything. Worst case is that we lose a
  * reschedule ...
  */
+/* use smp_ops 
+ */
 void native_smp_send_reschedule(int cpu)
 {
 	if (unlikely(cpu_is_offline(cpu))) {

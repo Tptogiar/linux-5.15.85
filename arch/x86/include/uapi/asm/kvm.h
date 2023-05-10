@@ -109,6 +109,7 @@ struct kvm_ioapic_state {
 #define KVM_IRQCHIP_PIC_MASTER   0
 #define KVM_IRQCHIP_PIC_SLAVE    1
 #define KVM_IRQCHIP_IOAPIC       2
+/* KVM_NR_IRQCHIPS’ means two pic chips and one io-apic chip */
 #define KVM_NR_IRQCHIPS          3
 
 #define KVM_RUN_X86_SMM		 (1 << 0)

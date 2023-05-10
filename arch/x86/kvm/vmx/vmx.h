@@ -487,6 +487,7 @@ static inline u8 vmx_get_rvi(void)
 	return vmcs_read16(GUEST_INTR_STATUS) & 0xff;
 }
 
+/* 由宏生成对应的方法 */
 #define BUILD_CONTROLS_SHADOW(lname, uname)				    \
 static inline void lname##_controls_set(struct vcpu_vmx *vmx, u32 val)	    \
 {									    \

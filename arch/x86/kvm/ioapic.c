@@ -682,6 +682,7 @@ static const struct kvm_io_device_ops ioapic_mmio_ops = {
 	.write    = ioapic_mmio_write,
 };
 
+/* caller kvm_arch_vm_ioctl */
 int kvm_ioapic_init(struct kvm *kvm)
 {
 	struct kvm_ioapic *ioapic;

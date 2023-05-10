@@ -40,6 +40,10 @@ struct smp_ops {
 
 	void (*stop_other_cpus)(int wait);
 	void (*crash_stop_other_cpus)(void);
+	/* it can be set to
+	 * native_smp_send_reschedule & 
+	 * xen_smp_send_reschedule
+	 */
 	void (*smp_send_reschedule)(int cpu);
 
 	int (*cpu_up)(unsigned cpu, struct task_struct *tidle);
@@ -102,8 +106,17 @@ static inline void play_dead(void)
 	smp_ops.play_dead();
 }
 
+/* caller kvm_vcpu_kick &
+ * resched_curr  &
+ * wake_up_idle_cpu &
+ * kick_process &
+ * svm_vcpu_run &
+ * __kvm_request_immediate_exit &
+ * wake_up_if_idle
+ */
 static inline void smp_send_reschedule(int cpu)
 {
+	/* native_smp_send_reschedule & xen_smp_send_reschedule */
 	smp_ops.smp_send_reschedule(cpu);
 }
 

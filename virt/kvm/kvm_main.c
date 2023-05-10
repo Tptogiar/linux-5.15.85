@@ -323,6 +323,7 @@ bool kvm_make_all_cpus_request_except(struct kvm *kvm, unsigned int req,
 	return called;
 }
 
+/* caller many */
 bool kvm_make_all_cpus_request(struct kvm *kvm, unsigned int req)
 {
 	return kvm_make_all_cpus_request_except(kvm, req, NULL);
@@ -3377,6 +3378,7 @@ EXPORT_SYMBOL_GPL(kvm_vcpu_wake_up);
 /*
  * Kick a sleeping VCPU, or a guest VCPU in guest mode, into host kernel mode.
  */
+/* caller: all over the palce */
 void kvm_vcpu_kick(struct kvm_vcpu *vcpu)
 {
 	int me, cpu;

@@ -57,6 +57,7 @@
 
 #define KVM_HALT_POLL_NS_DEFAULT 200000
 
+/* means the ioapic has 24 pins */
 #define KVM_IRQCHIP_NUM_PINS  KVM_IOAPIC_NUM_PINS
 
 #define KVM_DIRTY_LOG_MANUAL_CAPS   (KVM_DIRTY_LOG_MANUAL_PROTECT_ENABLE | \
@@ -634,6 +635,9 @@ struct kvm_vcpu_arch {
 	u64 efer;
 	u64 apic_base;
 	struct kvm_lapic *apic;    /* kernel irqchip context */
+	/* assignment kvm_arch_vcpu_create &
+	 *			  kvm_vcpu_update_apicv
+	 */
 	bool apicv_active;
 	bool load_eoi_exitmap_pending;
 	DECLARE_BITMAP(ioapic_handled_vectors, 256);

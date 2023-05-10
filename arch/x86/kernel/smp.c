@@ -266,6 +266,7 @@ struct smp_ops smp_ops = {
 #if defined(CONFIG_KEXEC_CORE)
 	.crash_stop_other_cpus	= kdump_nmi_shootdown_cpus,
 #endif
+	/* caller smp_send_reschedule */
 	.smp_send_reschedule	= native_smp_send_reschedule,
 
 	.cpu_up			= native_cpu_up,

@@ -264,6 +264,7 @@ bool kvm_arch_can_set_irq_routing(struct kvm *kvm)
 	return irqchip_in_kernel(kvm);
 }
 
+/* caller setup_routing_entry */
 int kvm_set_routing_entry(struct kvm *kvm,
 			  struct kvm_kernel_irq_routing_entry *e,
 			  const struct kvm_irq_routing_entry *ue)
@@ -281,12 +282,12 @@ int kvm_set_routing_entry(struct kvm *kvm,
 		case KVM_IRQCHIP_PIC_SLAVE:
 			e->irqchip.pin += PIC_NUM_PINS / 2;
 			fallthrough;
-		case KVM_IRQCHIP_PIC_MASTER:
+		case KVM_IRQCHIP_PIC_MASTER:         /* pic irq */
 			if (ue->u.irqchip.pin >= PIC_NUM_PINS / 2)
 				return -EINVAL;
 			e->set = kvm_set_pic_irq;
 			break;
-		case KVM_IRQCHIP_IOAPIC:
+		case KVM_IRQCHIP_IOAPIC:             /* ioapic irq */
 			if (ue->u.irqchip.pin >= KVM_IOAPIC_NUM_PINS)
 				return -EINVAL;
 			e->set = kvm_set_ioapic_irq;
@@ -355,6 +356,7 @@ EXPORT_SYMBOL_GPL(kvm_intr_is_single_vcpu);
 #define ROUTING_ENTRY2(irq) \
 	IOAPIC_ROUTING_ENTRY(irq), PIC_ROUTING_ENTRY(irq)
 
+/* For the irq < 16, it has two entries, one for pic and one for ioapic */
 static const struct kvm_irq_routing_entry default_routing[] = {
 	ROUTING_ENTRY2(0), ROUTING_ENTRY2(1),
 	ROUTING_ENTRY2(2), ROUTING_ENTRY2(3),
@@ -370,6 +372,7 @@ static const struct kvm_irq_routing_entry default_routing[] = {
 	ROUTING_ENTRY1(22), ROUTING_ENTRY1(23),
 };
 
+/* caller kvm_arch_vm_ioctl */
 int kvm_setup_default_irq_routing(struct kvm *kvm)
 {
 	return kvm_set_irq_routing(kvm, default_routing,

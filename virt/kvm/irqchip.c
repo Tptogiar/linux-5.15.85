@@ -62,6 +62,9 @@ int kvm_send_userspace_msi(struct kvm *kvm, struct kvm_msi *msi)
 	return kvm_set_msi(&route, kvm, KVM_USERSPACE_IRQ_SOURCE_ID, 1, false);
 }
 
+/* caller kvm_vm_ioctl_irq_line &
+ * 		  pit_do_work
+ */
 /*
  * Return value:
  *  < 0   Interrupt was ignored (masked or not delivered for other reasons)
@@ -125,6 +128,7 @@ void kvm_free_irq_routing(struct kvm *kvm)
 	free_irq_routing_table(rt);
 }
 
+/* kvm_set_irq_routing */
 static int setup_routing_entry(struct kvm *kvm,
 			       struct kvm_irq_routing_table *rt,
 			       struct kvm_kernel_irq_routing_entry *e,
@@ -166,6 +170,10 @@ bool __weak kvm_arch_can_set_irq_routing(struct kvm *kvm)
 	return true;
 }
 
+/* caller kvm_setup_default_irq_routing & 
+ * 		  kvm_setup_empty_irq_routing 
+ * 		  
+ */
 int kvm_set_irq_routing(struct kvm *kvm,
 			const struct kvm_irq_routing_entry *ue,
 			unsigned nr,

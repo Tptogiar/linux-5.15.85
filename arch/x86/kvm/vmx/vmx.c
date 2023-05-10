@@ -592,6 +592,9 @@ static inline bool cpu_has_broken_vmx_preemption_timer(void)
 	return false;
 }
 
+/* caller vmx_secondary_exec_control
+ * 		  vmx_create_vcpu
+ */
 static inline bool cpu_need_virtualize_apic_accesses(struct kvm_vcpu *vcpu)
 {
 	return flexpriority_enabled && lapic_in_kernel(vcpu);
@@ -3745,6 +3748,7 @@ static void seg_setup(int seg)
 	vmcs_write32(sf->ar_bytes, ar);
 }
 
+/* caller vmx_create_vcpu */
 static int alloc_apic_access_page(struct kvm *kvm)
 {
 	struct page *page;
@@ -4163,7 +4167,9 @@ void set_cr4_guest_host_mask(struct vcpu_vmx *vmx)
 	vmcs_writel(CR4_GUEST_HOST_MASK, ~vcpu->arch.cr4_guest_owned_bits);
 }
 
-/* caller init_vmcs */
+/* caller init_vmcs &
+ * 		  vmx_refresh_apicv_exec_ctrl
+ */
 static u32 vmx_pin_based_exec_ctrl(struct vcpu_vmx *vmx)
 {
 	u32 pin_based_exec_ctrl = vmcs_config.pin_based_exec_ctrl;
@@ -4204,6 +4210,7 @@ static u32 vmx_vmexit_ctrl(void)
 		~(VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL | VM_EXIT_LOAD_IA32_EFER);
 }
 
+/* kvm_vcpu_update_apicv */
 static void vmx_refresh_apicv_exec_ctrl(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -4310,6 +4317,9 @@ vmx_adjust_secondary_exec_control(struct vcpu_vmx *vmx, u32 *exec_control,
 #define vmx_adjust_sec_exec_exiting(vmx, exec_control, lname, uname) \
 	vmx_adjust_sec_exec_control(vmx, exec_control, lname, uname, uname##_EXITING, true)
 
+/* caller init_vmcs &
+ * 		  vmx_vcpu_after_set_cpuid
+ */
 static u32 vmx_secondary_exec_control(struct vcpu_vmx *vmx)
 {
 	struct kvm_vcpu *vcpu = &vmx->vcpu;
@@ -5788,12 +5798,12 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_EOI_INDUCED]             = handle_apic_eoi_induced,
 	[EXIT_REASON_WBINVD]                  = kvm_emulate_wbinvd,
 	[EXIT_REASON_XSETBV]                  = kvm_emulate_xsetbv,
-	[EXIT_REASON_TASK_SWITCH]             = handle_task_switch,
+	[EXIT_REASON_TASK_SWITCH]             = handle_task_switch,   /* 现在的OS不适用硬件机制切换进程 */
 	[EXIT_REASON_MCE_DURING_VMENTRY]      = handle_machine_check,
 	[EXIT_REASON_GDTR_IDTR]		      = handle_desc,
 	[EXIT_REASON_LDTR_TR]		      = handle_desc,
-	[EXIT_REASON_EPT_VIOLATION]	      = handle_ept_violation,
-	[EXIT_REASON_EPT_MISCONFIG]           = handle_ept_misconfig,
+	[EXIT_REASON_EPT_VIOLATION]	      = handle_ept_violation,       /* EPT */
+	[EXIT_REASON_EPT_MISCONFIG]           = handle_ept_misconfig,   /* EPT */
 	[EXIT_REASON_PAUSE_INSTRUCTION]       = handle_pause,
 	[EXIT_REASON_MWAIT_INSTRUCTION]	      = kvm_emulate_mwait,
 	[EXIT_REASON_MONITOR_TRAP_FLAG]       = handle_monitor_trap,
@@ -8140,7 +8150,10 @@ static __init int hardware_setup(void)
 		ple_window_shrink = 0;
 	}
 
-	/* */
+	/*  检查posted-interrupt & 
+	 * 		virtual interrupt delivery & 
+	 * 	    APIC-register virtualization 
+	 */
 	if (!cpu_has_vmx_apicv())
 		enable_apicv = 0;
 	if (!enable_apicv)
