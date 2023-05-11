@@ -120,7 +120,7 @@ struct kvm_irq_level {
 	 * For ARM: See Documentation/virt/kvm/api.rst
 	 */
 	union {
-		__u32 irq;
+		__u32 irq; /* 管脚 */
 		__s32 status;
 	};
 	__u32 level;

@@ -25,6 +25,7 @@
 struct kvm;
 struct kvm_vcpu;
 
+/* 对8259A状态的抽象 */
 struct kvm_kpic_state {
 	u8 last_irr;	/* edge detection */
 	u8 irr;		/* interrupt request register */
@@ -46,6 +47,7 @@ struct kvm_kpic_state {
 	struct kvm_pic *pics_state;
 };
 
+/* 对8259A的抽象 */
 struct kvm_pic {
 	spinlock_t lock;
 	bool wakeup_needed;
@@ -59,7 +61,7 @@ struct kvm_pic {
 	unsigned long irq_states[PIC_NUM_PINS];
 };
 
-int kvm_pic_init(struct kvm *kvm);
+//for_read_code int kvm_pic_init(struct kvm *kvm);
 void kvm_pic_destroy(struct kvm *kvm);
 int kvm_pic_read_irq(struct kvm *kvm);
 void kvm_pic_update_irq(struct kvm_pic *s);

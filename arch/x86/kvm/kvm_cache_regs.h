@@ -189,22 +189,7 @@ static inline void leave_guest_mode(struct kvm_vcpu *vcpu)
 	vcpu->stat.guest_mode = 0;
 }
 
-/* (?todo-answer?: 这里的guest mode指的是什么？
- * 代码运行到这里，已经回到KV，逻辑cpu肯定已经回到root模式了，
- * 所以这个肯定不是值逻辑cpu是不是guest模式，
- * 注释中说 HF_GUEST_MASK 表示 VCPU is in guest-mode  
- * 如果是指vcpu是不是出于guest模式的话，vcpu不是一直都是guest(no-root)模式吗，
- * 难道这里判断的是vcpu是不是在内核态？) 
- * (answer: 根模式和非根模式是对于逻辑CPU来说的，对于vCPU而言没有这一说
- * 这里之所以定义vCPU的“IN_GUEST_MODE”，“OUTSIDE_GUEST_MODE”等，是从KVM的角度出发
- * 的，“IN_GUEST_MODE”用于标识某个vCPU在准备好进入逻辑CPU运行后，进入逻辑CPU上运行。
- * 但是在准备过程中， kvm_request_pending 之后需要做 local_irq_disable 这样的操作，之后才是进入逻辑CPU，
- * 这个过程中，有这样状态的一些时刻存在:kvm_request_pending检查过了，不会在检查了，也 local_irq_disable 了
- * 那对于这样的一些时刻，如果此时有其他逻辑CPU想要给这个vCPU注入事件是注入不了的，
- * 所以就需要“ IN_GUEST_MODE ”这样的表示位来标记这个vCPU已经在准备进入了，其他逻辑CPU
- * 检测到该vCPU是这样的状态的话，就可以考虑发一个IPI给该逻辑CPU
- * 详见文档： Ensuring Requests Are Seen )
- */
+
 static inline bool is_guest_mode(struct kvm_vcpu *vcpu)
 {
 	return vcpu->arch.hflags & HF_GUEST_MASK;

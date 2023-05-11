@@ -6369,6 +6369,7 @@ static void vmx_update_cr8_intercept(struct kvm_vcpu *vcpu, int tpr, int irr)
 		vmcs_write32(TPR_THRESHOLD, tpr_threshold);
 }
 
+/* caller nested_vmx_vmexit */
 void vmx_set_virtual_apic_mode(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -6423,6 +6424,7 @@ void vmx_set_virtual_apic_mode(struct kvm_vcpu *vcpu)
 	vmx_update_msr_bitmap_x2apic(vcpu);
 }
 
+/* caller kvm_vcpu_reload_apic_access_page */
 static void vmx_set_apic_access_page_addr(struct kvm_vcpu *vcpu)
 {
 	struct page *page;

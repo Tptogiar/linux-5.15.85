@@ -424,6 +424,7 @@ int __mmu_notifier_test_young(struct mm_struct *mm,
 	return young;
 }
 
+/* caller  mmu_notifier_change_pte */
 void __mmu_notifier_change_pte(struct mm_struct *mm, unsigned long address,
 			       pte_t pte)
 {

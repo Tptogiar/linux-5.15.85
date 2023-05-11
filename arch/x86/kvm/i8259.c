@@ -116,6 +116,9 @@ static inline int pic_set_irq1(struct kvm_kpic_state *s, int irq, int level)
  * return the highest priority found in mask (highest = smallest
  * number). Return 8 if no irq
  */
+/* caller pic_get_irq
+ * 		  pic_ioport_write
+ */
 static inline int get_priority(struct kvm_kpic_state *s, int mask)
 {
 	int priority;
@@ -183,6 +186,7 @@ void kvm_pic_update_irq(struct kvm_pic *s)
 	pic_unlock(s);
 }
 
+/* caller kvm_set_pic_irq */
 int kvm_pic_set_irq(struct kvm_pic *s, int irq, int irq_source_id, int level)
 {
 	int ret, irq_level;
@@ -231,6 +235,7 @@ static inline void pic_intack(struct kvm_kpic_state *s, int irq)
 
 }
 
+/* 中断评估 */
 int kvm_pic_read_irq(struct kvm *kvm)
 {
 	int irq, irq2, intno;
@@ -241,6 +246,7 @@ int kvm_pic_read_irq(struct kvm *kvm)
 	pic_lock(s);
 	irq = pic_get_irq(&s->pics[0]);
 	if (irq >= 0) {
+		/* 进行中断确认 */
 		pic_intack(&s->pics[0], irq);
 		if (irq == 2) {
 			irq2 = pic_get_irq(&s->pics[1]);
@@ -251,6 +257,7 @@ int kvm_pic_read_irq(struct kvm *kvm)
 				 * spurious IRQ on slave controller
 				 */
 				irq2 = 7;
+			/* 0~31 vector 为CPU只用，所以外设中断应该才32开始 */
 			intno = s->pics[1].irq_base + irq2;
 			irq = irq2 + 8;
 		} else
@@ -302,6 +309,7 @@ static void kvm_pic_reset(struct kvm_kpic_state *s)
 			pic_clear_isr(s, irq);
 }
 
+/* caller picdev_write */
 static void pic_ioport_write(void *opaque, u32 addr, u32 val)
 {
 	struct kvm_kpic_state *s = opaque;
@@ -417,6 +425,7 @@ static u32 pic_poll_read(struct kvm_kpic_state *s, u32 addr1)
 	return ret;
 }
 
+/* caller picdev_read */
 static u32 pic_ioport_read(void *opaque, u32 addr)
 {
 	struct kvm_kpic_state *s = opaque;
@@ -448,6 +457,10 @@ static u32 elcr_ioport_read(void *opaque, u32 addr1)
 	return s->elcr;
 }
 
+/* caller picdev_elcr_write
+ * 		  picdev_slave_write
+ * 		  picdev_master_write
+ */
 static int picdev_write(struct kvm_pic *s,
 			 gpa_t addr, int len, const void *val)
 {
@@ -482,6 +495,10 @@ static int picdev_write(struct kvm_pic *s,
 	return 0;
 }
 
+/* caller picdev_elcr_read
+ * 		  picdev_slave_read
+ * 		  picdev_master_read
+ */
 static int picdev_read(struct kvm_pic *s,
 		       gpa_t addr, int len, void *val)
 {
@@ -513,6 +530,7 @@ static int picdev_read(struct kvm_pic *s,
 	return 0;
 }
 
+/* use in: picdev_master_ops */
 static int picdev_master_write(struct kvm_vcpu *vcpu, struct kvm_io_device *dev,
 			       gpa_t addr, int len, const void *val)
 {
@@ -520,6 +538,7 @@ static int picdev_master_write(struct kvm_vcpu *vcpu, struct kvm_io_device *dev,
 			    addr, len, val);
 }
 
+/* use in: picdev_master_ops */
 static int picdev_master_read(struct kvm_vcpu *vcpu, struct kvm_io_device *dev,
 			      gpa_t addr, int len, void *val)
 {
@@ -567,6 +586,7 @@ static void pic_irq_request(struct kvm *kvm, int level)
 	s->output = level;
 }
 
+/* use in: kvm_pic_init */
 static const struct kvm_io_device_ops picdev_master_ops = {
 	.read     = picdev_master_read,
 	.write    = picdev_master_write,
@@ -577,6 +597,7 @@ static const struct kvm_io_device_ops picdev_slave_ops = {
 	.write    = picdev_slave_write,
 };
 
+/* (?todo?: elcr?) */
 static const struct kvm_io_device_ops picdev_elcr_ops = {
 	.read     = picdev_elcr_read,
 	.write    = picdev_elcr_write,

@@ -119,7 +119,7 @@ static const struct file_operations stat_fops_per_vm;
 
 static struct file_operations kvm_chardev_ops;
 
-static long kvm_vcpu_ioctl(struct file *file, unsigned int ioctl,
+//for_read_code static long kvm_vcpu_ioctl(struct file *file, unsigned int ioctl,
 			   unsigned long arg);
 #ifdef CONFIG_KVM_COMPAT
 static long kvm_vcpu_compat_ioctl(struct file *file, unsigned int ioctl,
@@ -463,6 +463,9 @@ static inline struct kvm *mmu_notifier_to_kvm(struct mmu_notifier *mn)
 	return container_of(mn, struct kvm, mmu_notifier);
 }
 
+/* use in: kvm_mmu_notifier_ops 
+ *
+ */
 static void kvm_mmu_notifier_invalidate_range(struct mmu_notifier *mn,
 					      struct mm_struct *mm,
 					      unsigned long start, unsigned long end)
@@ -669,6 +672,7 @@ void kvm_inc_notifier_count(struct kvm *kvm, unsigned long start,
 	}
 }
 
+/* use in: kvm_mmu_notifier_ops */
 static int kvm_mmu_notifier_invalidate_range_start(struct mmu_notifier *mn,
 					const struct mmu_notifier_range *range)
 {
@@ -4523,6 +4527,7 @@ static long kvm_vm_ioctl(struct file *filp,
 #endif
 #ifdef __KVM_HAVE_IRQ_LINE
 	case KVM_IRQ_LINE_STATUS:
+	/* pic 设备接受到外部设备的中断请求 */
 	case KVM_IRQ_LINE: {
 		struct kvm_irq_level irq_event;
 

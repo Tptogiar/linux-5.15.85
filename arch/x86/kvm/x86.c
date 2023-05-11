@@ -6115,12 +6115,12 @@ set_identity_unlock:
 		if (kvm->created_vcpus)
 			goto create_irqchip_unlock;
 
-		/* 创建PIC */
+		/* 创建虚拟PIC */
 		r = kvm_pic_init(kvm);
 		if (r)
 			goto create_irqchip_unlock;
 
-		/* 创建I/O APIC */
+		/* 创建虚拟I/O APIC */
 		r = kvm_ioapic_init(kvm);
 		if (r) {
 			kvm_pic_destroy(kvm);
@@ -9718,6 +9718,7 @@ static void vcpu_load_eoi_exitmap(struct kvm_vcpu *vcpu)
 		vcpu, (u64 *)vcpu->arch.ioapic_handled_vectors);
 }
 
+/* caller kvm_mmu_notifier_invalidate_range */
 void kvm_arch_mmu_notifier_invalidate_range(struct kvm *kvm,
 					    unsigned long start, unsigned long end)
 {
@@ -9737,6 +9738,7 @@ void kvm_arch_guest_memory_reclaimed(struct kvm *kvm)
 	static_call_cond(kvm_x86_guest_memory_reclaimed)(kvm);
 }
 
+/* caller vcpu_enter_guest */
 void kvm_vcpu_reload_apic_access_page(struct kvm_vcpu *vcpu)
 {
 	if (!lapic_in_kernel(vcpu))
@@ -9744,7 +9746,7 @@ void kvm_vcpu_reload_apic_access_page(struct kvm_vcpu *vcpu)
 
 	if (!kvm_x86_ops.set_apic_access_page_addr)
 		return;
-
+	/* vmx_set_apic_access_page_addr */
 	static_call(kvm_x86_set_apic_access_page_addr)(vcpu);
 }
 
@@ -12192,6 +12194,7 @@ bool kvm_arch_vcpu_in_kernel(struct kvm_vcpu *vcpu)
 	return vcpu->arch.preempted_in_kernel;
 }
 
+/* caller kvm_vcpu_kick */
 int kvm_arch_vcpu_should_kick(struct kvm_vcpu *vcpu)
 {
 	return kvm_vcpu_exiting_guest_mode(vcpu) == IN_GUEST_MODE;

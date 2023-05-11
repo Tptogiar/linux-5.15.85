@@ -84,6 +84,7 @@ int kvm_set_irq(struct kvm *kvm, int irq_source_id, u32 irq, int level,
 	 * writes to the unused one.
 	 */
 	idx = srcu_read_lock(&kvm->irq_srcu);
+	/* 找到irq对应的master 8259A 或是salver 8259A */
 	i = kvm_irq_map_gsi(kvm, irq_set, irq);
 	srcu_read_unlock(&kvm->irq_srcu, idx);
 

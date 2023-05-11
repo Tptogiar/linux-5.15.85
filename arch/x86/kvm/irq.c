@@ -129,6 +129,7 @@ static int kvm_cpu_get_extint(struct kvm_vcpu *v)
 /*
  * Read pending interrupt vector and intack.
  */
+/* 中断评估 */
 int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
 {
 	int vector = kvm_cpu_get_extint(v);
