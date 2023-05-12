@@ -4504,6 +4504,7 @@ static int kvm_vcpu_ioctl_get_lapic(struct kvm_vcpu *vcpu,
 	return kvm_apic_get_state(vcpu, s);
 }
 
+/* caller kvm_arch_vcpu_ioctl */
 static int kvm_vcpu_ioctl_set_lapic(struct kvm_vcpu *vcpu,
 				    struct kvm_lapic_state *s)
 {
@@ -9136,7 +9137,7 @@ static void kvm_inject_exception(struct kvm_vcpu *vcpu)
 	 * 并非只是queue，写中断信息到vm-extry interrupt information了
 	 * 在上游已经改为 static_call(kvm_x86_inject_exception)(vcpu);
 	 * 
-	 * vmx_queue_exception | svm_queue_exception 
+	 * vmx_queue_exception | svm_queue_exception
 	 */
 	static_call(kvm_x86_queue_exception)(vcpu);
 }
@@ -9927,6 +9928,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 			goto out;
 		}
 		if (req_int_win)
+			/* vmx_enable_irq_window svm_enable_irq_window */
 			static_call(kvm_x86_enable_irq_window)(vcpu);
 
 		if (kvm_lapic_enabled(vcpu)) {

@@ -604,10 +604,18 @@ struct kvm_hv_sint {
 };
 
 struct kvm_kernel_irq_routing_entry {
-	u32 gsi;
+	u32 gsi;   /* 管教号，IR0，IR1 */
 	u32 type;
-	/* this can set can be 
-	 * kvm_set_ioapic_irq  or kvm_set_pic_irq 
+	/*
+	 * 对于支持APIC的外设发起的中断请求，调用 kvm_set_ioapic_irq
+	 * 对于支持PIC的外设发起的中断请求，调用 kvm_set_pic_irq 
+	 * 对于支持MSI的外设发起的中断请求，调用 kvm_set_msi
+	 *
+	 * 
+	 *
+	 * 来的外部中断与gsi匹配，这调用这个set函数指针
+	 * caller kvm_set_irq
+	 * assignment: kvm_set_routing_entry
 	 */
 	int (*set)(struct kvm_kernel_irq_routing_entry *e,
 		   struct kvm *kvm, int irq_source_id, int level,

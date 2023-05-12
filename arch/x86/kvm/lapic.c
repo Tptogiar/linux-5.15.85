@@ -483,6 +483,9 @@ static inline int apic_find_highest_irr(struct kvm_lapic *apic)
 	return result;
 }
 
+/* caller kvm_get_apic_interrupt &
+ * 		  kvm_apic_clear_irr
+ */
 static inline void apic_clear_irr(int vec, struct kvm_lapic *apic)
 {
 	struct kvm_vcpu *vcpu;
@@ -502,6 +505,7 @@ static inline void apic_clear_irr(int vec, struct kvm_lapic *apic)
 	}
 }
 
+/* caller nested_vmx_run */
 void kvm_apic_clear_irr(struct kvm_vcpu *vcpu, int vec)
 {
 	apic_clear_irr(vec, vcpu->arch.apic);
@@ -2528,6 +2532,7 @@ void kvm_inject_apic_timer_irqs(struct kvm_vcpu *vcpu)
 	}
 }
 
+/* caller kvm_cpu_get_interrupt */
 int kvm_get_apic_interrupt(struct kvm_vcpu *vcpu)
 {
 	int vector = kvm_apic_has_interrupt(vcpu);
@@ -2605,6 +2610,7 @@ int kvm_apic_get_state(struct kvm_vcpu *vcpu, struct kvm_lapic_state *s)
 	return kvm_apic_state_fixup(vcpu, s, false);
 }
 
+/* caller kvm_vcpu_ioctl_set_lapic */
 int kvm_apic_set_state(struct kvm_vcpu *vcpu, struct kvm_lapic_state *s)
 {
 	struct kvm_lapic *apic = vcpu->arch.apic;
@@ -2636,9 +2642,12 @@ int kvm_apic_set_state(struct kvm_vcpu *vcpu, struct kvm_lapic_state *s)
 	kvm_apic_update_apicv(vcpu);
 	apic->highest_isr_cache = -1;
 	if (vcpu->arch.apicv_active) {
+		/* vmx_apicv_post_state_restore  */
 		static_call(kvm_x86_apicv_post_state_restore)(vcpu);
+		/* vmx_hwapic_irr_update  */
 		static_call(kvm_x86_hwapic_irr_update)(vcpu,
 				apic_find_highest_irr(apic));
+		/* vmx_hwapic_isr_update  */
 		static_call(kvm_x86_hwapic_isr_update)(vcpu,
 				apic_find_highest_isr(apic));
 	}

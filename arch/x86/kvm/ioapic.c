@@ -646,6 +646,7 @@ static int ioapic_mmio_write(struct kvm_vcpu *vcpu, struct kvm_io_device *this,
 	addr &= 0xff;
 	spin_lock(&ioapic->lock);
 	switch (addr) {
+	/* 选择的目标寄存器 */
 	case IOAPIC_REG_SELECT:
 		ioapic->ioregsel = data & 0xFF; /* 8-bit register */
 		break;

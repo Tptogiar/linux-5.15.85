@@ -5345,6 +5345,7 @@ static int handle_invlpg(struct kvm_vcpu *vcpu)
 	return kvm_skip_emulated_instruction(vcpu);
 }
 
+/* caller kvm_vmx_exit_handlers[] */
 static int handle_apic_access(struct kvm_vcpu *vcpu)
 {
 	if (likely(fasteoi)) {
@@ -5377,6 +5378,7 @@ static int handle_apic_eoi_induced(struct kvm_vcpu *vcpu)
 	return 1;
 }
 
+/* caller kvm_vmx_exit_handlers[] */
 static int handle_apic_write(struct kvm_vcpu *vcpu)
 {
 	unsigned long exit_qualification = vmx_get_exit_qual(vcpu);
@@ -6453,6 +6455,11 @@ static void vmx_set_apic_access_page_addr(struct kvm_vcpu *vcpu)
 	put_page(page);
 }
 
+/* caller apic_set_isr &
+ * 		  kvm_apic_set_state &
+ * 		  kvm_lapic_reset & 
+ * 		  apic_clear_isr
+ */
 static void vmx_hwapic_isr_update(struct kvm_vcpu *vcpu, int max_isr)
 {
 	u16 status;
@@ -6470,6 +6477,9 @@ static void vmx_hwapic_isr_update(struct kvm_vcpu *vcpu, int max_isr)
 	}
 }
 
+/* caller vmx_hwapic_irr_update &
+ * 		  vmx_sync_pir_to_irr
+ */
 static void vmx_set_rvi(int vector)
 {
 	u16 status;
@@ -6487,6 +6497,12 @@ static void vmx_set_rvi(int vector)
 	}
 }
 
+/* caller kvm_apic_set_state &
+ * 		  apic_clear_irr &
+ * 		  kvm_lapic_reset &
+ * 
+ * RVI -> Requested Virtual Interrupts
+ */
 static void vmx_hwapic_irr_update(struct kvm_vcpu *vcpu, int max_irr)
 {
 	/*
@@ -6558,6 +6574,7 @@ static void vmx_load_eoi_exitmap(struct kvm_vcpu *vcpu, u64 *eoi_exit_bitmap)
 	vmcs_write64(EOI_EXIT_BITMAP3, eoi_exit_bitmap[3]);
 }
 
+/* caller kvm_apic_set_state */
 static void vmx_apicv_post_state_restore(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);

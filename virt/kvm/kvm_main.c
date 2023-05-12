@@ -4527,7 +4527,10 @@ static long kvm_vm_ioctl(struct file *filp,
 #endif
 #ifdef __KVM_HAVE_IRQ_LINE
 	case KVM_IRQ_LINE_STATUS:
-	/* pic 设备接受到外部设备的中断请求 */
+	/* 虚拟 pic   IOAPIC 设备接受到外部设备的中断请求 
+	 * 
+	 * (?todo?: 内核如何判断当前用的是PIC，还是已经启用IO APIC了？)
+	 */
 	case KVM_IRQ_LINE: {
 		struct kvm_irq_level irq_event;
 

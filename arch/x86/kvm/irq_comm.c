@@ -35,6 +35,7 @@ static int kvm_set_pic_irq(struct kvm_kernel_irq_routing_entry *e,
 	return kvm_pic_set_irq(pic, e->irqchip.pin, irq_source_id, level);
 }
 
+/* caller kvm_set_routing_entry */
 static int kvm_set_ioapic_irq(struct kvm_kernel_irq_routing_entry *e,
 			      struct kvm *kvm, int irq_source_id, int level,
 			      bool line_status)
@@ -358,7 +359,17 @@ EXPORT_SYMBOL_GPL(kvm_intr_is_single_vcpu);
 #define ROUTING_ENTRY2(irq) \
 	IOAPIC_ROUTING_ENTRY(irq), PIC_ROUTING_ENTRY(irq)
 
-/* For the irq < 16, it has two entries, one for pic and one for ioapic */
+/* For the irq < 16, it has two entries, one for pic and one for ioapic 
+ * 
+ * (为什么对于irq<16的中断请求要同时调用 kvm_set_pic_irq 和 kvm_set_ioapic_irq?
+ * 这里为irq<16的irq设置了两个entry，在 kvm_set_irq 中可以看到它的调用方式
+ * 是使用while调用的，那两个entry都回被调用到，所以为什么要同时调用，
+ * 最终不管调用哪一个不都会写入到 VM-entry interrupt information里面吗，
+ * 而且作用效果好像是一样的吧？可能KVM这两个不一定是同时开启的？
+ *
+ * 
+ * 
+ */
 static const struct kvm_irq_routing_entry default_routing[] = {
 	ROUTING_ENTRY2(0), ROUTING_ENTRY2(1),
 	ROUTING_ENTRY2(2), ROUTING_ENTRY2(3),
