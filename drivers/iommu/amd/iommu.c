@@ -2925,6 +2925,7 @@ static void irte_ga_prepare(void *entry,
 	irte->lo.fields_remap.valid       = 1;
 }
 
+/* use in: irte_32_ops */
 static void irte_activate(void *entry, u16 devid, u16 index)
 {
 	union irte *irte = (union irte *) entry;

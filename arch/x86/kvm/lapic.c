@@ -2188,6 +2188,7 @@ void kvm_lapic_set_eoi(struct kvm_vcpu *vcpu)
 EXPORT_SYMBOL_GPL(kvm_lapic_set_eoi);
 
 /* emulate APIC access in a trap manner */
+/* nodecode -> 不带解码 */
 void kvm_apic_write_nodecode(struct kvm_vcpu *vcpu, u32 offset)
 {
 	u32 val = 0;

@@ -4235,6 +4235,7 @@ static void vmx_refresh_apicv_exec_ctrl(struct kvm_vcpu *vcpu)
 	vmx_update_msr_bitmap_x2apic(vcpu);
 }
 
+/* init_vmcs */
 static u32 vmx_exec_control(struct vcpu_vmx *vmx)
 {
 	u32 exec_control = vmcs_config.cpu_based_exec_ctrl;
@@ -5345,7 +5346,16 @@ static int handle_invlpg(struct kvm_vcpu *vcpu)
 	return kvm_skip_emulated_instruction(vcpu);
 }
 
-/* caller kvm_vmx_exit_handlers[] */
+/* caller kvm_vmx_exit_handlers[] 
+ *
+ * (?todo-answer?: 但是如果开启了APIC-register virtualization，
+ * 却没有开启相应的virtual-interrupt delivery会是什么情况？
+ * 怎么处理？是同时开启的？)
+ * (answer: vmx_refresh_apicv_exec_ctrl 中对于virtual-interrupt delivery 和
+ * APIC-register virtualization 是同时开启的)
+ * 
+ *
+ */
 static int handle_apic_access(struct kvm_vcpu *vcpu)
 {
 	if (likely(fasteoi)) {
@@ -5795,7 +5805,7 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 	[EXIT_REASON_VMOFF]		      = handle_vmx_instruction,
 	[EXIT_REASON_VMON]		      = handle_vmx_instruction,
 	[EXIT_REASON_TPR_BELOW_THRESHOLD]     = handle_tpr_below_threshold,
-	[EXIT_REASON_APIC_ACCESS]             = handle_apic_access,
+	[EXIT_REASON_APIC_ACCESS]             = handle_apic_access,       // apic access
 	[EXIT_REASON_APIC_WRITE]              = handle_apic_write,
 	[EXIT_REASON_EOI_INDUCED]             = handle_apic_eoi_induced,
 	[EXIT_REASON_WBINVD]                  = kvm_emulate_wbinvd,

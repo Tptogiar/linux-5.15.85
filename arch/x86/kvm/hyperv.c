@@ -85,6 +85,7 @@ static bool synic_has_vector_auto_eoi(struct kvm_vcpu_hv_synic *synic,
 	return false;
 }
 
+/* caller synic_set_sint */
 static void synic_update_vector(struct kvm_vcpu_hv_synic *synic,
 				int vector)
 {
@@ -126,6 +127,7 @@ static void synic_update_vector(struct kvm_vcpu_hv_synic *synic,
 	mutex_unlock(&vcpu->kvm->arch.apicv_update_lock);
 }
 
+/* caller synic_set_msr */
 static int synic_set_sint(struct kvm_vcpu_hv_synic *synic, int sint,
 			  u64 data, bool host)
 {

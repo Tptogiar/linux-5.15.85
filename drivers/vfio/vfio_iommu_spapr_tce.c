@@ -10,6 +10,8 @@
  *     Author: Alex Williamson <alex.williamson@redhat.com>
  */
 
+/* tce -> Translation Cache Entry */
+
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
@@ -339,6 +341,7 @@ static int tce_iommu_clear(struct tce_container *container,
 static void tce_iommu_free_table(struct tce_container *container,
 		struct iommu_table *tbl);
 
+/* use in: tce_iommu_driver_ops */
 static void tce_iommu_release(void *iommu_data)
 {
 	struct tce_container *container = iommu_data;
@@ -773,6 +776,7 @@ static long tce_iommu_create_default_window(struct tce_container *container)
 	return ret;
 }
 
+/* use in: tce_iommu_driver_ops */
 static long tce_iommu_ioctl(void *iommu_data,
 				 unsigned int cmd, unsigned long arg)
 {
@@ -1138,6 +1142,7 @@ static long tce_iommu_ioctl(void *iommu_data,
 	return -ENOTTY;
 }
 
+/* caller tce_iommu_release */
 static void tce_iommu_release_ownership(struct tce_container *container,
 		struct iommu_table_group *table_group)
 {
@@ -1369,11 +1374,13 @@ static const struct vfio_iommu_driver_ops tce_iommu_driver_ops = {
 	.detach_group	= tce_iommu_detach_group,
 };
 
+/* use in: module_init(tce_iommu_init) */
 static int __init tce_iommu_init(void)
 {
 	return vfio_register_iommu_driver(&tce_iommu_driver_ops);
 }
 
+/* use in: module_exit(tce_iommu_cleanup) */
 static void __exit tce_iommu_cleanup(void)
 {
 	vfio_unregister_iommu_driver(&tce_iommu_driver_ops);

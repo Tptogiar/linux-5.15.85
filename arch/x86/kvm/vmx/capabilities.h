@@ -110,11 +110,15 @@ static inline bool cpu_has_vmx_mpx(void)
 		(vmcs_config.vmentry_ctrl & VM_ENTRY_LOAD_BNDCFGS);
 }
 
+/* caller cpu_need_tpr_shadow &
+ * 		  cpu_has_vmx_flexpriority 
+ */
 static inline bool cpu_has_vmx_tpr_shadow(void)
 {
 	return vmcs_config.cpu_based_exec_ctrl & CPU_BASED_TPR_SHADOW;
 }
 
+/* caller vmx_exec_control */
 static inline bool cpu_need_tpr_shadow(struct kvm_vcpu *vcpu)
 {
 	return cpu_has_vmx_tpr_shadow() && lapic_in_kernel(vcpu);
@@ -185,6 +189,7 @@ static inline bool cpu_has_vmx_apic_register_virt(void)
 		SECONDARY_EXEC_APIC_REGISTER_VIRT;
 }
 
+/* caller cpu_has_vmx_apicv */
 static inline bool cpu_has_vmx_virtual_intr_delivery(void)
 {
 	return vmcs_config.cpu_based_2nd_exec_ctrl &
@@ -269,6 +274,10 @@ static inline bool cpu_has_vmx_bus_lock_detection(void)
 	    SECONDARY_EXEC_BUS_LOCK_DETECTION;
 }
 
+/* caller init_vmcs_shadow_fields &
+ * 		  prepare_vmcs02_rare &
+ * 		  hardware_setup
+ */
 static inline bool cpu_has_vmx_apicv(void)
 {
 	return cpu_has_vmx_apic_register_virt() &&
@@ -276,6 +285,7 @@ static inline bool cpu_has_vmx_apicv(void)
 		cpu_has_vmx_posted_intr();
 }
 
+/* caller hardware_setup */
 static inline bool cpu_has_vmx_flexpriority(void)
 {
 	return cpu_has_vmx_tpr_shadow() &&

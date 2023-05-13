@@ -288,6 +288,9 @@ static inline void kvm_pit_reset_reinject(struct kvm_pit *pit)
 	atomic_set(&pit->pit_state.irq_ack, 1);
 }
 
+/* caller kvm_free_pit &
+ * 		  kvm_vm_ioctl_reinject
+ */
 void kvm_pit_set_reinject(struct kvm_pit *pit, bool reinject)
 {
 	struct kvm_kpit_state *ps = &pit->pit_state;

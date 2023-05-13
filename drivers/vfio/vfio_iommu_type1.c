@@ -3101,6 +3101,7 @@ out_unlock:
 	return -EINVAL;
 }
 
+/* use in: vfio_iommu_driver_ops_type1 */
 static long vfio_iommu_type1_ioctl(void *iommu_data,
 				   unsigned int cmd, unsigned long arg)
 {

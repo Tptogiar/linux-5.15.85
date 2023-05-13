@@ -171,6 +171,7 @@ static inline void kvm_lapic_set_reg(struct kvm_lapic *apic, int reg_off, u32 va
 
 DECLARE_STATIC_KEY_FALSE(kvm_has_noapic_vcpu);
 
+/* tptogiar_kvm_has_noapic_vcpu */
 static inline bool lapic_in_kernel(struct kvm_vcpu *vcpu)
 {
 	if (static_branch_unlikely(&kvm_has_noapic_vcpu))
@@ -211,6 +212,7 @@ static inline int apic_x2apic_mode(struct kvm_lapic *apic)
 	return apic->vcpu->arch.apic_base & X2APIC_ENABLE;
 }
 
+/* caller: in many palce */
 static inline bool kvm_vcpu_apicv_active(struct kvm_vcpu *vcpu)
 {
 	return vcpu->arch.apic && vcpu->arch.apicv_active;

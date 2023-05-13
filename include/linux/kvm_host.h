@@ -901,8 +901,8 @@ static inline void kvm_irqfd_exit(void)
 {
 }
 #endif
-int kvm_init(void *opaque, unsigned vcpu_size, unsigned vcpu_align,
-		  struct module *module);
+//for_read_code int kvm_init(void *opaque, unsigned vcpu_size, unsigned vcpu_align,
+//for_read_code 		  struct module *module);
 void kvm_exit(void);
 
 void kvm_get_kvm(struct kvm *kvm);
@@ -1303,7 +1303,7 @@ static inline bool kvm_arch_intc_initialized(struct kvm *kvm)
 }
 #endif
 
-int kvm_arch_init_vm(struct kvm *kvm, unsigned long type);
+//for_read_code int kvm_arch_init_vm(struct kvm *kvm, unsigned long type);
 void kvm_arch_destroy_vm(struct kvm *kvm);
 void kvm_arch_sync_events(struct kvm *kvm);
 

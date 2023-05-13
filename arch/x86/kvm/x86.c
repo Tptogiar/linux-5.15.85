@@ -8881,12 +8881,14 @@ static void kvm_pv_kick_cpu_op(struct kvm *kvm, unsigned long flags, int apicid)
 	kvm_irq_delivery_to_apic(kvm, NULL, &lapic_irq, NULL);
 }
 
+/* caller: many places */
 bool kvm_apicv_activated(struct kvm *kvm)
 {
 	return (READ_ONCE(kvm->arch.apicv_inhibit_reasons) == 0);
 }
 EXPORT_SYMBOL_GPL(kvm_apicv_activated);
 
+/* caller kvm_arch_init_vm */
 static void kvm_apicv_init(struct kvm *kvm)
 {
 	mutex_init(&kvm->arch.apicv_update_lock);
@@ -9607,6 +9609,11 @@ void kvm_make_scan_ioapic_request(struct kvm *kvm)
 
 /* caller vcpu_enter_guest &
  * 		  svm_vcpu_unblocking
+ * 
+ * from: kvm_lapic_set_base &
+ * 		 kvm_arch_vcpu_create &
+ * 		 nested_vmx_vmexit &
+ * 		 enter_svm_guest_mode
  */
 void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu)
 {
@@ -9618,6 +9625,7 @@ void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu)
 	mutex_lock(&vcpu->kvm->arch.apicv_update_lock);
 
 	activate = kvm_apicv_activated(vcpu->kvm);
+	/* 已经是开启状态了 */
 	if (vcpu->arch.apicv_active == activate)
 		goto out;
 
@@ -9643,11 +9651,15 @@ out:
 }
 EXPORT_SYMBOL_GPL(kvm_vcpu_update_apicv);
 
+/* caller synic_update_vector &
+ * 		  kvm_request_apicv_update
+ */
 void __kvm_request_apicv_update(struct kvm *kvm, bool activate, ulong bit)
 {
 	unsigned long old, new;
 
 	if (!kvm_x86_ops.check_apicv_inhibit_reasons ||
+		/* vmx_check_apicv_inhibit_reasons svm_check_apicv_inhibit_reasons */
 	    !static_call(kvm_x86_check_apicv_inhibit_reasons)(bit))
 		return;
 
@@ -9671,6 +9683,11 @@ void __kvm_request_apicv_update(struct kvm *kvm, bool activate, ulong bit)
 }
 EXPORT_SYMBOL_GPL(__kvm_request_apicv_update);
 
+/* caller kvm_pit_set_reinject &
+ * 		  interrupt_window_interception &
+ * 		  svm_enable_irq_window &
+ * 		  svm_vcpu_after_set_cpuid
+ */
 void kvm_request_apicv_update(struct kvm *kvm, bool activate, ulong bit)
 {
 	mutex_lock(&kvm->arch.apicv_update_lock);
@@ -11115,6 +11132,9 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 		 */
 		if (enable_apicv) {  
 			vcpu->arch.apicv_active = true;
+			/* vcpu_enter_guest:9901 
+			 * kvm_vcpu_update_apicv
+			 */
 			kvm_make_request(KVM_REQ_APICV_UPDATE, vcpu);
 		}
 	} else
@@ -11583,6 +11603,11 @@ bool kvm_vcpu_is_bsp(struct kvm_vcpu *vcpu)
 	return (vcpu->arch.apic_base & MSR_IA32_APICBASE_BSP) != 0;
 }
 
+/* use in: lapic_in_kernel &
+ * 		   kvm_arch_vcpu_create &
+ * 		   kvm_arch_vcpu_destroy
+ */
+#define tptogiar_kvm_has_noapic_vcpu for_read_code
 __read_mostly DEFINE_STATIC_KEY_FALSE(kvm_has_noapic_vcpu);
 EXPORT_SYMBOL_GPL(kvm_has_noapic_vcpu);
 

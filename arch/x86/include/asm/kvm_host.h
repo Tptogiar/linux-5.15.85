@@ -1093,6 +1093,15 @@ struct kvm_arch {
 	struct mutex apicv_update_lock;
 
 	bool apic_access_memslot_enabled;
+	/* 当apicv启用是，这个值为零 
+	 * 不为零时，记录的是当前要关闭的原因，在 kvm_vcpu_update_apicv
+	 * 中update时，检查到有需要关闭的原因，就会把 vcpu->arch.apicv_active 
+	 * 置为关闭
+	 * 
+	 * assign in: kvm_apicv_init
+	 * use in: __kvm_request_apicv_update &
+	 * 		   kvm_apicv_activated
+	 */
 	unsigned long apicv_inhibit_reasons;
 
 	gpa_t wall_clock;
@@ -1787,13 +1796,13 @@ gpa_t kvm_mmu_gva_to_gpa_write(struct kvm_vcpu *vcpu, gva_t gva,
 gpa_t kvm_mmu_gva_to_gpa_system(struct kvm_vcpu *vcpu, gva_t gva,
 				struct x86_exception *exception);
 
-bool kvm_apicv_activated(struct kvm *kvm);
-void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu);
-void kvm_request_apicv_update(struct kvm *kvm, bool activate,
-			      unsigned long bit);
+//for_read_code bool kvm_apicv_activated(struct kvm *kvm);
+//for_read_code void kvm_vcpu_update_apicv(struct kvm_vcpu *vcpu);
+//for_read_code void kvm_request_apicv_update(struct kvm *kvm, bool activate,
+//for_read_code 			      unsigned long bit);
 
-void __kvm_request_apicv_update(struct kvm *kvm, bool activate,
-				unsigned long bit);
+//for_read_code void __kvm_request_apicv_update(struct kvm *kvm, bool activate,
+//for_read_code 				unsigned long bit);
 
 int kvm_emulate_hypercall(struct kvm_vcpu *vcpu);
 

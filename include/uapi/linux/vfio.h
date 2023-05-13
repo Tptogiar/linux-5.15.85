@@ -1109,6 +1109,9 @@ struct vfio_iommu_type1_dma_map {
 	__u64	size;				/* Size of mapping (bytes) */
 };
 
+/* use in: vfio_iommu_type1_ioctl &
+ * 		   tce_iommu_ioctl
+ */
 #define VFIO_IOMMU_MAP_DMA _IO(VFIO_TYPE, VFIO_BASE + 13)
 
 struct vfio_bitmap {
