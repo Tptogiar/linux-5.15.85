@@ -1027,6 +1027,9 @@ struct kvm_ppc_resize_hpt {
 #define KVM_CAP_MULTI_ADDRESS_SPACE 118
 #define KVM_CAP_GUEST_DEBUG_HW_BPS 119
 #define KVM_CAP_GUEST_DEBUG_HW_WPS 120
+/* use in: kvm_vm_ioctl_enable_cap &
+ *   	   kvm_vm_ioctl_check_extension
+ */
 #define KVM_CAP_SPLIT_IRQCHIP 121
 #define KVM_CAP_IOEVENTFD_ANY_LENGTH 122
 #define KVM_CAP_HYPERV_SYNIC 123
@@ -1384,8 +1387,9 @@ struct kvm_s390_ucas_mapping {
 #define KVM_S390_VCPU_FAULT	 _IOW(KVMIO, 0x52, unsigned long)
 
 /* Device model IOC */
+/* use in: kvm_arch_vm_ioctl */
 #define KVM_CREATE_IRQCHIP        _IO(KVMIO,   0x60)
-#define KVM_IRQ_LINE              _IOW(KVMIO,  0x61, struct kvm_irq_level)
+#define KVM_IRQ_LINE              _IOW(KVMIO,  0x61, struct kvm_irq_level)  /* 向kvm发送中断注入请求 */
 #define KVM_GET_IRQCHIP           _IOWR(KVMIO, 0x62, struct kvm_irqchip)
 #define KVM_SET_IRQCHIP           _IOR(KVMIO,  0x63, struct kvm_irqchip)
 #define KVM_CREATE_PIT            _IO(KVMIO,   0x64)

@@ -87,6 +87,9 @@ static inline bool cpu_has_vmx_preemption_timer(void)
 		PIN_BASED_VMX_PREEMPTION_TIMER;
 }
 
+/* caller cpu_has_vmx_apicv &
+ * 		  prepare_vmcs02_constant_state
+ */
 static inline bool cpu_has_vmx_posted_intr(void)
 {
 	return vmcs_config.pin_based_exec_ctrl & PIN_BASED_POSTED_INTR;

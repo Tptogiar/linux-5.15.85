@@ -21,7 +21,9 @@
 /* Kernel & User level defines for VFIO IOCTLs. */
 
 /* Extensions */
-
+/* use in: vfio_iommu_type1_open &
+ * 		   vfio_iommu_type1_check_extension
+ */
 #define VFIO_TYPE1_IOMMU		1
 #define VFIO_SPAPR_TCE_IOMMU		2
 #define VFIO_TYPE1v2_IOMMU		3

@@ -3472,6 +3472,7 @@ static bool kvm_vcpu_eligible_for_directed_yield(struct kvm_vcpu *vcpu)
  * a vcpu_load/vcpu_put pair.  However, for most architectures
  * kvm_arch_vcpu_runnable does not require vcpu_load.
  */
+/* dy -> directed yield */
 bool __weak kvm_arch_dy_runnable(struct kvm_vcpu *vcpu)
 {
 	return kvm_arch_vcpu_runnable(vcpu);
@@ -3809,7 +3810,7 @@ static int kvm_vcpu_ioctl_get_stats_fd(struct kvm_vcpu *vcpu)
 	return fd;
 }
 
-/* vcpu相关 */
+/* vcpu fd */
 static long kvm_vcpu_ioctl(struct file *filp,
 			   unsigned int ioctl, unsigned long arg)
 {
@@ -4347,6 +4348,7 @@ int __attribute__((weak)) kvm_vm_ioctl_enable_cap(struct kvm *kvm,
 	return -EINVAL;
 }
 
+/* caller kvm_vm_ioctl  */
 static int kvm_vm_ioctl_enable_cap_generic(struct kvm *kvm,
 					   struct kvm_enable_cap *cap)
 {

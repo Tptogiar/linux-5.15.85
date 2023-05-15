@@ -679,6 +679,9 @@ struct kvm_memslots {
 	struct kvm_memory_slot memslots[];
 };
 
+/* 每一个vm对应一个kvm结构
+ * kvm_vmx kvm_svm
+ */
 struct kvm {
 #ifdef KVM_HAVE_MMU_RWLOCK
 	rwlock_t mmu_lock;
@@ -712,7 +715,15 @@ struct kvm {
 	 * and is accessed atomically.
 	 */
 	atomic_t online_vcpus;
-	int created_vcpus;
+	/* use in: kvm_arch_vm_ioctl &
+	 *         kvm_vm_ioctl_enable_cap  &
+ 	 *         kvm_vm_ioctl_create_vcpu &
+ 	 *         kvm_vm_ioctl_enable_dirty_log_ring &
+ 	 *         
+ 	 *         sev_guest_init &
+ 	 *         svm_vm_copy_asid_from
+ 	 */
+	int created_vcpus;  /* 记录当前VM的vCPU数 */
 	int last_boosted_vcpu;
 	struct list_head vm_list;
 	struct mutex lock;
@@ -1159,8 +1170,8 @@ int kvm_get_dirty_log(struct kvm *kvm, struct kvm_dirty_log *log,
 
 //for_read_code int kvm_vm_ioctl_irq_line(struct kvm *kvm, struct kvm_irq_level *irq_level,
 //for_read_code 			bool line_status);
-int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
-			    struct kvm_enable_cap *cap);
+//for_read_code int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
+//for_read_code 			    struct kvm_enable_cap *cap);
 //for_read_code long kvm_arch_vm_ioctl(struct file *filp,
 //for_read_code 		       unsigned int ioctl, unsigned long arg);
 long kvm_arch_vm_compat_ioctl(struct file *filp, unsigned int ioctl,

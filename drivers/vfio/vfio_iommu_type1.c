@@ -21,6 +21,8 @@
  * device/bus interface rather than a group interface.
  */
 
+/* vf ->  Virtual Function */
+
 #include <linux/compat.h>
 #include <linux/device.h>
 #include <linux/fs.h>
@@ -3268,6 +3270,9 @@ static void vfio_iommu_type1_notify(void *iommu_data,
 	wake_up_all(&iommu->vaddr_wait);
 }
 
+/* use in: vfio_iommu_type1_init &
+ * 		   vfio_iommu_type1_cleanup
+ */
 static const struct vfio_iommu_driver_ops vfio_iommu_driver_ops_type1 = {
 	.name			= "vfio-iommu-type1",
 	.owner			= THIS_MODULE,

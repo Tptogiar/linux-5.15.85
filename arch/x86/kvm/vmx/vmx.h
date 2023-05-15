@@ -353,6 +353,7 @@ struct vcpu_vmx {
 	} shadow_msr_intercept;
 };
 
+/* 每一个vm对应一个kvm_vmx结构 */
 struct kvm_vmx {
 	struct kvm kvm;
 

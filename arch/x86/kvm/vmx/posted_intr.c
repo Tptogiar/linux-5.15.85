@@ -279,6 +279,7 @@ void vmx_pi_start_assignment(struct kvm *kvm)
  * @set: set or unset PI
  * returns 0 on success, < 0 on failure
  */
+/* irte -> interrupt remapping table entry */
 int pi_update_irte(struct kvm *kvm, unsigned int host_irq, uint32_t guest_irq,
 		   bool set)
 {

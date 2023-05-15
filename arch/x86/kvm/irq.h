@@ -66,6 +66,13 @@ void kvm_pic_destroy(struct kvm *kvm);
 int kvm_pic_read_irq(struct kvm *kvm);
 void kvm_pic_update_irq(struct kvm_pic *s);
 
+/* caller kvm_cpu_has_extint &
+ *        kvm_cpu_get_extint &
+ *        kvm_set_routing_entry &
+ *        kvm_arch_post_irq_routing_update &
+ *        kvm_ioapic_send_eoi &
+ *        vcpu_scan_ioapic
+ */
 static inline int irqchip_split(struct kvm *kvm)
 {
 	int mode = kvm->arch.irqchip_mode;
@@ -75,6 +82,15 @@ static inline int irqchip_split(struct kvm *kvm)
 	return mode == KVM_IRQCHIP_SPLIT;
 }
 
+/* caller pic_in_kernel &
+ * 		  ioapic_in_kernel &
+ * 		  kvm_arch_irqfd_allowed &
+ * 		  kvm_free_irq_source_id *
+ * 		  kvm_arch_vm_ioctl  KVM_SET_IRQCHIP KVM_GET_IRQCHIP   &
+ * 		  kvm_irqchip_mode
+ * 		  
+ * 用来判断内核是否为这个vm创建过IRQchip了
+ */
 static inline int irqchip_kernel(struct kvm *kvm)
 {
 	int mode = kvm->arch.irqchip_mode;
@@ -84,11 +100,34 @@ static inline int irqchip_kernel(struct kvm *kvm)
 	return mode == KVM_IRQCHIP_KERNEL;
 }
 
+/* caller kvm_vcpu_ioctl_interrupt &
+ * 		  post_kvm_run_save &
+ * 		  dm_request_for_irq_injection
+ * 
+ */
 static inline int pic_in_kernel(struct kvm *kvm)
 {
 	return irqchip_kernel(kvm);
 }
 
+/* caller kvm_arch_irqfd_allowed &
+ *        kvm_arch_can_set_irq_routing &
+ *        kvm_vcpu_ioctl_interrupt &
+ *        kvm_vcpu_ioctl_enable_cap &
+ *        kvm_vm_ioctl_irq_line &
+ *        kvm_vm_ioctl_enable_cap &
+ *        kvm_arch_vm_ioctl &
+ *        kvm_arch_vcpu_create &
+ *        
+ *        kvm_send_userspace_msi &
+ *        
+ *        avic_init_vcpu &
+ *        svm_create_vcpu &
+ *        
+ *        vmx_can_use_vtd_pi
+ * 
+ * 用来判断内核是否为这个vm创建过IRQchip了 kvm_arch_vm_ioctl KVM_CREATE_IRQCHIP
+ */
 static inline int irqchip_in_kernel(struct kvm *kvm)
 {
 	int mode = kvm->arch.irqchip_mode;

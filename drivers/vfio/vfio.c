@@ -48,6 +48,7 @@ static struct vfio {
 	dev_t				group_devt;
 } vfio;
 
+/* 为vfio提供了IOMMU重映射的驱动，即向用户空间暴露DMA操作 */
 struct vfio_iommu_driver {
 	const struct vfio_iommu_driver_ops	*ops;
 	struct list_head			vfio_next;

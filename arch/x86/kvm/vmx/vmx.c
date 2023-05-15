@@ -84,6 +84,13 @@ module_param_named(vpid, enable_vpid, bool, 0444);
 static bool __read_mostly enable_vnmi = 1;
 module_param_named(vnmi, enable_vnmi, bool, S_IRUGO);
 
+/* use in: hardware_setup &
+ * 		   cpu_need_virtualize_apic_accesses &
+ * 		   report_flexpriority &
+ * 		   vmx_set_virtual_apic_mode &
+ *		   nested_vmx_setup_ctls_msrs
+ *   	   
+ */
 bool __read_mostly flexpriority_enabled = 1;
 module_param_named(flexpriority, flexpriority_enabled, bool, S_IRUGO);
 
@@ -2483,7 +2490,10 @@ static __init int adjust_vmx_controls(u32 ctl_min, u32 ctl_opt,
 }
 
 /* caller hardware_setup & vmx_check_processor_compat
-*/
+ * 一个VMCS的配置会经过两个步骤，一个是这里的 setup_vmcs_config 检查CPU的capacity，
+ * 写入然后全局变量 vmcs_config 当做模板，之后启动具体的vCPU时在在 init_vmcs 中根据
+ * 相关功能的开启情况再次设置vmcs的位
+ */
 static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 				    struct vmx_capability *vmx_cap)
 {
@@ -2560,11 +2570,12 @@ static __init int setup_vmcs_config(struct vmcs_config *vmcs_conf,
 			return -EIO;
 	}
 #ifndef CONFIG_X86_64
+	/* 如果virtualize APIC access没有开启 */
 	if (!(_cpu_based_2nd_exec_control &
 				SECONDARY_EXEC_VIRTUALIZE_APIC_ACCESSES))
 		_cpu_based_exec_control &= ~CPU_BASED_TPR_SHADOW;
 #endif
-
+	/* 如果use TPR shadow没有开启 */
 	if (!(_cpu_based_exec_control & CPU_BASED_TPR_SHADOW))
 		_cpu_based_2nd_exec_control &= ~(
 				SECONDARY_EXEC_APIC_REGISTER_VIRT |
@@ -7932,6 +7943,7 @@ static struct kvm_x86_ops vmx_x86_ops __initdata = {
 	.cpu_has_accelerated_tpr = report_flexpriority,
 	.has_emulated_msr = vmx_has_emulated_msr,
 
+	/* use in: kvm_arch_alloc_vm */
 	.vm_size = sizeof(struct kvm_vmx),
 	.vm_init = vmx_vm_init,
 

@@ -5727,6 +5727,7 @@ int kvm_vm_ioctl_irq_line(struct kvm *kvm, struct kvm_irq_level *irq_event,
 	return 0;
 }
 
+/* caller kvm_vm_ioctl_enable_cap_generic */
 int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
 			    struct kvm_enable_cap *cap)
 {
@@ -5746,8 +5747,16 @@ int kvm_vm_ioctl_enable_cap(struct kvm *kvm,
 		if (cap->args[0] > MAX_NR_RESERVED_IOAPIC_PINS)
 			goto split_irqchip_unlock;
 		r = -EEXIST;
+		/* 如果kvm->arch.irqchip_mode 等于 KVM_IRQCHIP_SPLIT 或是
+		 * KVM_IRQCHIP_KERNEL ，说明 
+		 */
 		if (irqchip_in_kernel(kvm))
 			goto split_irqchip_unlock;
+		/* 如果当前vm已近创建过vCPU，
+		 * 在创建vCPU的时候已经创建过IRQchip(lapic)了
+		 *
+		 * kvm_arch_vcpu_create
+		 */
 		if (kvm->created_vcpus)
 			goto split_irqchip_unlock;
 		r = kvm_setup_empty_irq_routing(kvm);
@@ -6109,6 +6118,7 @@ set_identity_unlock:
 		mutex_lock(&kvm->lock);
 
 		r = -EEXIST;
+		/* 如果已经创建过了就不会在创建 */
 		if (irqchip_in_kernel(kvm))
 			goto create_irqchip_unlock;
 
@@ -11112,6 +11122,7 @@ int kvm_arch_vcpu_create(struct kvm_vcpu *vcpu)
 		return r;
 
 	if (irqchip_in_kernel(vcpu->kvm)) {
+		/* 创建LAPIC */
 		r = kvm_create_lapic(vcpu, lapic_timer_advance_ns);
 		if (r < 0)
 			goto fail_mmu_destroy;
@@ -12191,6 +12202,7 @@ int kvm_arch_vcpu_runnable(struct kvm_vcpu *vcpu)
  */
 bool kvm_arch_dy_has_pending_interrupt(struct kvm_vcpu *vcpu)
 {
+	/* pi_has_pending_interrupt  svm_dy_apicv_has_pending_interrupt */
 	if (vcpu->arch.apicv_active && static_call(kvm_x86_dy_apicv_has_pending_interrupt)(vcpu))
 		return true;
 

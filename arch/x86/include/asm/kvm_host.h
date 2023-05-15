@@ -1036,8 +1036,21 @@ struct kvm_xen {
 };
 
 enum kvm_irqchip_mode {
+	/* caller irqchip_in_kernel  
+	 *
+	 * 如果还没有为VM创建过PIC，IOAPIC
+	 */
 	KVM_IRQCHIP_NONE,
+	/* use in: irqchip_kernel *
+	 * 		   kvm_arch_vm_ioctl
+	 *
+	 * KVM模拟PIC, IOAPIC, LAPIC
+	 */
 	KVM_IRQCHIP_KERNEL,       /* created with KVM_CREATE_IRQCHIP */
+	/* use in: kvm_vm_ioctl_enable_cap 
+	 *
+	 * QEMU模拟IOAPIC和PIC，KVM模拟LAPIC
+	 */
 	KVM_IRQCHIP_SPLIT,        /* created with KVM_CAP_SPLIT_IRQCHIP */
 };
 
@@ -1054,6 +1067,7 @@ struct kvm_x86_msr_filter {
 #define APICV_INHIBIT_REASON_PIT_REINJ  4
 #define APICV_INHIBIT_REASON_X2APIC	5
 
+/* kvm */
 struct kvm_arch {
 	unsigned long n_used_mmu_pages;
 	unsigned long n_requested_mmu_pages;
@@ -1149,6 +1163,15 @@ struct kvm_arch {
 	u64 disabled_quirks;
 	int cpu_dirty_logging_count;
 
+	/* use in: kvm_arch_vm_ioctl &
+	 *         kvm_vm_ioctl_enable_cap &
+	 *
+	 *         irqchip_in_kernel &
+	 *         irqchip_kernel &
+	 *         irqchip_split
+	 *
+	 * IRQchip指中断控制器，如8259A
+	 */
 	enum kvm_irqchip_mode irqchip_mode;
 	u8 nr_reserved_ioapic_pins;
 
@@ -1333,6 +1356,7 @@ struct kvm_x86_ops {
 	bool (*has_emulated_msr)(struct kvm *kvm, u32 index);
 	void (*vcpu_after_set_cpuid)(struct kvm_vcpu *vcpu);
 
+	/* assignment:  vmx_x86_ops svm_x86_ops */
 	unsigned int vm_size;
 	int (*vm_init)(struct kvm *kvm);
 	void (*vm_destroy)(struct kvm *kvm);
@@ -1572,6 +1596,7 @@ static inline void kvm_ops_static_call_update(void)
 }
 
 #define __KVM_HAVE_ARCH_VM_ALLOC
+/* caller kvm_create_vm */
 static inline struct kvm *kvm_arch_alloc_vm(void)
 {
 	return __vmalloc(kvm_x86_ops.vm_size, GFP_KERNEL_ACCOUNT | __GFP_ZERO);
