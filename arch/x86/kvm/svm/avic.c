@@ -795,6 +795,10 @@ get_pi_vcpu_info(struct kvm *kvm, struct kvm_kernel_irq_routing_entry *e,
  * @set: set or unset PI
  * returns 0 on success, < 0 on failure
  */
+/* caller kvm_arch_irq_bypass_add_producer &
+ * 		  kvm_arch_irq_bypass_del_producer &
+ * 		  kvm_arch_update_irqfd_routing
+ */
 int svm_update_pi_irte(struct kvm *kvm, unsigned int host_irq,
 		       uint32_t guest_irq, bool set)
 {

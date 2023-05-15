@@ -608,6 +608,7 @@ kvm_irqfd_release(struct kvm *kvm)
  * Take note of a change in irq routing.
  * Caller must invoke synchronize_srcu(&kvm->irq_srcu) afterwards.
  */
+/* caller kvm_set_irq_routing */
 void kvm_irq_routing_update(struct kvm *kvm)
 {
 	struct kvm_kernel_irqfd *irqfd;

@@ -94,6 +94,7 @@ bool irq_remapping_cap(enum irq_remap_cap cap)
 }
 EXPORT_SYMBOL_GPL(irq_remapping_cap);
 
+/* caller enable_IR_x2apic */
 int __init irq_remapping_prepare(void)
 {
 	if (disable_irq_remap)

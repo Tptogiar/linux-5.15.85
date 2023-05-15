@@ -102,6 +102,7 @@ static void init_ir_status(struct intel_iommu *iommu)
 		iommu->flags |= VTD_FLAG_IRQ_REMAP_PRE_ENABLED;
 }
 
+/* caller intel_irq_remapping_alloc */
 static int alloc_irte(struct intel_iommu *iommu,
 		      struct irq_2_iommu *irq_iommu, u16 count)
 {
@@ -470,6 +471,9 @@ static int iommu_load_old_irte(struct intel_iommu *iommu)
 }
 
 
+/* caller intel_setup_irq_remapping &
+ * 		  reenable_irq_remapping
+ */
 static void iommu_set_irq_remapping(struct intel_iommu *iommu, int mode)
 {
 	unsigned long flags;
@@ -531,6 +535,10 @@ static void iommu_enable_irq_remapping(struct intel_iommu *iommu)
 	raw_spin_unlock_irqrestore(&iommu->register_lock, flags);
 }
 
+
+/* caller intel_prepare_irq_remapping &
+ * 		  dmar_ir_add
+ */
 static int intel_setup_irq_remapping(struct intel_iommu *iommu)
 {
 	struct ir_table *ir_table;
@@ -723,6 +731,7 @@ static void __init intel_cleanup_irq_remapping(void)
 		pr_warn("Failed to enable irq remapping. You are vulnerable to irq-injection attacks.\n");
 }
 
+/* use in: intel_irq_remap_ops */
 static int __init intel_prepare_irq_remapping(void)
 {
 	struct dmar_drhd_unit *drhd;
@@ -1132,6 +1141,7 @@ static void prepare_irte(struct irte *irte, int vector, unsigned int dest)
 	irte->redir_hint = 1;
 }
 
+/* use in: irq_remapping_prepare */
 struct irq_remap_ops intel_irq_remap_ops = {
 	.prepare		= intel_prepare_irq_remapping,
 	.enable			= intel_enable_irq_remapping,
@@ -1320,6 +1330,7 @@ static void intel_free_irq_resources(struct irq_domain *domain,
 	}
 }
 
+/* use in: intel_ir_domain_ops */
 static int intel_irq_remapping_alloc(struct irq_domain *domain,
 				     unsigned int virq, unsigned int nr_irqs,
 				     void *arg)
@@ -1436,6 +1447,7 @@ static int intel_irq_remapping_select(struct irq_domain *d,
 	return iommu && d == iommu->ir_domain;
 }
 
+/* use in: intel_setup_irq_remapping */
 static const struct irq_domain_ops intel_ir_domain_ops = {
 	.select = intel_irq_remapping_select,
 	.alloc = intel_irq_remapping_alloc,
@@ -1447,6 +1459,7 @@ static const struct irq_domain_ops intel_ir_domain_ops = {
 /*
  * Support of Interrupt Remapping Unit Hotplug
  */
+/* caller dmar_ir_hotplug */
 static int dmar_ir_add(struct dmar_drhd_unit *dmaru, struct intel_iommu *iommu)
 {
 	int ret;
@@ -1484,6 +1497,9 @@ static int dmar_ir_add(struct dmar_drhd_unit *dmaru, struct intel_iommu *iommu)
 	return ret;
 }
 
+/* caller dmar_hp_add_drhd &
+ * 		  dmar_hp_remove_drhd
+ */
 int dmar_ir_hotplug(struct dmar_drhd_unit *dmaru, bool insert)
 {
 	int ret = 0;

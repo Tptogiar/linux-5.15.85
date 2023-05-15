@@ -20,8 +20,9 @@ static DEFINE_PER_CPU(raw_spinlock_t, blocked_vcpu_on_cpu_lock);
 /* caller vmx_vcpu_pi_load
  * 		  vmx_vcpu_pi_put
  * 		  __pi_post_block
+ * 		  pi_pre_block
  * 		  pi_wakeup_handler
- * 		  pi_wakeup_handlerpi_wakeup_handler
+ * 		  pi_has_pending_interrupt
  */
 static inline struct pi_desc *vcpu_to_pi_desc(struct kvm_vcpu *vcpu)
 {
@@ -279,7 +280,12 @@ void vmx_pi_start_assignment(struct kvm *kvm)
  * @set: set or unset PI
  * returns 0 on success, < 0 on failure
  */
-/* irte -> interrupt remapping table entry */
+/* irte -> interrupt routing table entry 
+ * use in: vmx_x86_ops
+ * caller kvm_arch_irq_bypass_add_producer &
+ * 		  kvm_arch_irq_bypass_del_producer &
+ * 		  kvm_arch_update_irqfd_routing
+ */
 int pi_update_irte(struct kvm *kvm, unsigned int host_irq, uint32_t guest_irq,
 		   bool set)
 {

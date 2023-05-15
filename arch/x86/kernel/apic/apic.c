@@ -1409,6 +1409,7 @@ void __init init_bsp_APIC(void)
 static void __init apic_bsp_setup(bool upmode);
 
 /* Init the interrupt delivery mode for the BSP */
+/* use in: x86_init.irqs */
 void __init apic_intr_mode_init(void)
 {
 	bool upmode = IS_ENABLED(CONFIG_UP_LATE_INIT);
@@ -1907,6 +1908,7 @@ static inline void try_to_enable_x2apic(int remap_mode) { }
 static inline void __x2apic_enable(void) { }
 #endif /* !CONFIG_X86_X2APIC */
 
+/* caller default_setup_apic_routing */
 void __init enable_IR_x2apic(void)
 {
 	unsigned long flags;

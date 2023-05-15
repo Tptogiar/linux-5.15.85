@@ -8,7 +8,7 @@
 /* Posted-Interrupt Descriptor */
 /* Figure 9-11.  Posted Interrupt Descriptor Format */
 struct pi_desc {
-	u32 pir[8];     /* Posted interrupt requested */
+	u32 pir[8];     /* Posted interrupt requested */  /* 0~255 */
 	union {
 		struct {
 				/* bit 256 - Outstanding Notification */
@@ -26,7 +26,7 @@ struct pi_desc {
 		};
 		u64 control;
 	};
-	u32 rsvd[6];
+	u32 rsvd[6];  /* 320~511 reserved */
 } __aligned(64);
 
 static inline bool pi_test_and_set_on(struct pi_desc *pi_desc)
@@ -87,14 +87,14 @@ static inline int pi_test_sn(struct pi_desc *pi_desc)
 			(unsigned long *)&pi_desc->control);
 }
 
-void vmx_vcpu_pi_load(struct kvm_vcpu *vcpu, int cpu);
-void vmx_vcpu_pi_put(struct kvm_vcpu *vcpu);
+//for_read_code void vmx_vcpu_pi_load(struct kvm_vcpu *vcpu, int cpu);
+//for_read_code void vmx_vcpu_pi_put(struct kvm_vcpu *vcpu);
 int pi_pre_block(struct kvm_vcpu *vcpu);
 void pi_post_block(struct kvm_vcpu *vcpu);
-void pi_wakeup_handler(void);
+//for_read_code void pi_wakeup_handler(void);
 void __init pi_init_cpu(int cpu);
 bool pi_has_pending_interrupt(struct kvm_vcpu *vcpu);
-int pi_update_irte(struct kvm *kvm, unsigned int host_irq, uint32_t guest_irq,
+//for_read_code int pi_update_irte(struct kvm *kvm, unsigned int host_irq, uint32_t guest_irq,
 		   bool set);
 void vmx_pi_start_assignment(struct kvm *kvm);
 

@@ -58,7 +58,7 @@ static inline struct irq_domain *arch_get_ir_parent_domain(void)
 
 // for read code static inline bool irq_remapping_cap(enum irq_remap_cap cap) { return 0; }
 static inline void set_irq_remapping_broken(void) { }
-static inline int irq_remapping_prepare(void) { return -ENODEV; }
+//for_read_code static inline int irq_remapping_prepare(void) { return -ENODEV; }
 static inline int irq_remapping_enable(void) { return -ENODEV; }
 static inline void irq_remapping_disable(void) { }
 static inline int irq_remapping_reenable(int eim) { return -ENODEV; }

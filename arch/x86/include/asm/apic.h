@@ -128,7 +128,7 @@ static inline bool apic_is_x2apic_enabled(void)
 	return msr & X2APIC_ENABLE;
 }
 
-extern void enable_IR_x2apic(void);
+//for_read_code extern void enable_IR_x2apic(void);
 
 extern int get_physical_broadcast(void);
 
@@ -141,7 +141,7 @@ extern void lapic_shutdown(void);
 extern void sync_Arb_IDs(void);
 extern void init_bsp_APIC(void);
 extern void apic_intr_mode_select(void);
-extern void apic_intr_mode_init(void);
+//for_read_code extern void apic_intr_mode_init(void);
 extern void init_apic_mappings(void);
 void register_lapic_address(unsigned long address);
 extern void setup_boot_APIC_clock(void);
@@ -191,7 +191,7 @@ static inline void disable_local_APIC(void) { }
 static inline void lapic_update_tsc_freq(void) { }
 static inline void init_bsp_APIC(void) { }
 static inline void apic_intr_mode_select(void) { }
-static inline void apic_intr_mode_init(void) { }
+//for_read_code static inline void apic_intr_mode_init(void) { }
 static inline void lapic_assign_system_vectors(void) { }
 static inline void lapic_assign_legacy_vector(unsigned int i, bool r) { }
 static inline bool apic_needs_pit(void) { return true; }
@@ -490,7 +490,7 @@ static inline unsigned int read_apic_id(void)
 
 extern int default_apic_id_valid(u32 apicid);
 extern int default_acpi_madt_oem_check(char *, char *);
-extern void default_setup_apic_routing(void);
+//for_read_code extern void default_setup_apic_routing(void);
 
 extern u32 apic_default_calc_apicid(unsigned int cpu);
 extern u32 apic_flat_calc_apicid(unsigned int cpu);

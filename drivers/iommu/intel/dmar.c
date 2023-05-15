@@ -2221,6 +2221,9 @@ static int dmar_walk_dsm_resource(acpi_handle handle, int func,
 	return ret;
 }
 
+/* caller dmar_hotplug_remove &
+ * 		  dmar_hotplug_insert
+ */
 static int dmar_hp_add_drhd(struct acpi_dmar_header *header, void *arg)
 {
 	int ret;
@@ -2237,6 +2240,9 @@ static int dmar_hp_add_drhd(struct acpi_dmar_header *header, void *arg)
 	return ret;
 }
 
+/* caller dmar_hotplug_remove &
+ * 		  dmar_hotplug_insert
+ */
 static int dmar_hp_remove_drhd(struct acpi_dmar_header *header, void *arg)
 {
 	int i, ret;

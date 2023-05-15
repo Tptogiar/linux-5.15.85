@@ -447,6 +447,9 @@ struct dmar_pci_notify_info;
 
 struct irq_domain;
 
+/* use in: intel_setup_irq_remapping &
+ * 		   alloc_irte
+ */
 struct ir_table {
 	struct irte *base;
 	unsigned long *bitmap;

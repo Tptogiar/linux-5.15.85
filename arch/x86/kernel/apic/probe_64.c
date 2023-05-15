@@ -16,6 +16,7 @@
 /*
  * Check the APIC IDs in bios_cpu_apicid and choose the APIC mode.
  */
+/* caller apic_intr_mode_init */
 void __init default_setup_apic_routing(void)
 {
 	struct apic **drv;
