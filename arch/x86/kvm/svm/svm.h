@@ -535,8 +535,8 @@ void svm_hwapic_irr_update(struct kvm_vcpu *vcpu, int max_irr);
 void svm_hwapic_isr_update(struct kvm_vcpu *vcpu, int max_isr);
 int svm_deliver_avic_intr(struct kvm_vcpu *vcpu, int vec);
 bool svm_dy_apicv_has_pending_interrupt(struct kvm_vcpu *vcpu);
-int svm_update_pi_irte(struct kvm *kvm, unsigned int host_irq,
-		       uint32_t guest_irq, bool set);
+//for_read_code int svm_update_pi_irte(struct kvm *kvm, unsigned int host_irq,
+//for_read_code 		       uint32_t guest_irq, bool set);
 void svm_vcpu_blocking(struct kvm_vcpu *vcpu);
 void svm_vcpu_unblocking(struct kvm_vcpu *vcpu);
 

@@ -1273,22 +1273,22 @@ static inline bool kvm_arch_has_noncoherent_dma(struct kvm *kvm)
 }
 #endif
 #ifdef __KVM_HAVE_ARCH_ASSIGNED_DEVICE
-void kvm_arch_start_assignment(struct kvm *kvm);
-void kvm_arch_end_assignment(struct kvm *kvm);
-bool kvm_arch_has_assigned_device(struct kvm *kvm);
+//for_read_code void kvm_arch_start_assignment(struct kvm *kvm);
+//for_read_code void kvm_arch_end_assignment(struct kvm *kvm);
+//for_read_code bool kvm_arch_has_assigned_device(struct kvm *kvm);
 #else
-static inline void kvm_arch_start_assignment(struct kvm *kvm)
-{
-}
+//for_read_code static inline void kvm_arch_start_assignment(struct kvm *kvm)
+//for_read_code {
+//for_read_code }
 
-static inline void kvm_arch_end_assignment(struct kvm *kvm)
-{
-}
+//for_read_code static inline void kvm_arch_end_assignment(struct kvm *kvm)
+//for_read_code {
+//for_read_code }
 
-static __always_inline bool kvm_arch_has_assigned_device(struct kvm *kvm)
-{
-	return false;
-}
+//for_read_code static __always_inline bool kvm_arch_has_assigned_device(struct kvm *kvm)
+//for_read_code {
+//for_read_code 	return false;
+//for_read_code }
 #endif
 
 static inline struct rcuwait *kvm_arch_vcpu_get_wait(struct kvm_vcpu *vcpu)
@@ -1735,14 +1735,14 @@ void kvm_eventfd_init(struct kvm *kvm);
 int kvm_ioeventfd(struct kvm *kvm, struct kvm_ioeventfd *args);
 
 #ifdef CONFIG_HAVE_KVM_IRQFD
-int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args);
+//for_read_code int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args);
 void kvm_irqfd_release(struct kvm *kvm);
 void kvm_irq_routing_update(struct kvm *);
 #else
-static inline int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
-{
-	return -EINVAL;
-}
+//for_read_code static inline int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
+//for_read_code {
+//for_read_code 	return -EINVAL;
+//for_read_code }
 
 static inline void kvm_irqfd_release(struct kvm *kvm) {}
 #endif
@@ -1751,10 +1751,10 @@ static inline void kvm_irqfd_release(struct kvm *kvm) {}
 
 static inline void kvm_eventfd_init(struct kvm *kvm) {}
 
-static inline int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
-{
-	return -EINVAL;
-}
+//for_read_code static inline int kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
+//for_read_code {
+//for_read_code 	return -EINVAL;
+//for_read_code }
 
 static inline void kvm_irqfd_release(struct kvm *kvm) {}
 
@@ -1923,8 +1923,8 @@ struct kvm_vcpu * __percpu *kvm_get_running_vcpus(void);
 
 #ifdef CONFIG_HAVE_KVM_IRQ_BYPASS
 bool kvm_arch_has_irq_bypass(void);
-int kvm_arch_irq_bypass_add_producer(struct irq_bypass_consumer *,
-			   struct irq_bypass_producer *);
+//for_read_code int kvm_arch_irq_bypass_add_producer(struct irq_bypass_consumer *,
+//for_read_code 			   struct irq_bypass_producer *);
 void kvm_arch_irq_bypass_del_producer(struct irq_bypass_consumer *,
 			   struct irq_bypass_producer *);
 void kvm_arch_irq_bypass_stop(struct irq_bypass_consumer *);

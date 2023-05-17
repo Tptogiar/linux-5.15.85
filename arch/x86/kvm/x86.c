@@ -216,7 +216,12 @@ EXPORT_SYMBOL_GPL(host_efer);
 bool __read_mostly allow_smaller_maxphyaddr = 0;
 EXPORT_SYMBOL_GPL(allow_smaller_maxphyaddr);
 
-/* initializer hardware_setup */
+/* initializer hardware_setup 
+ *
+ * 需要这三项 posted-interrupt &
+ * 		      virtual interrupt delivery &
+ * 			  APIC-register virtualization
+ */
 bool __read_mostly enable_apicv = true;
 EXPORT_SYMBOL_GPL(enable_apicv);
 
@@ -12504,6 +12509,9 @@ bool kvm_arch_can_dequeue_async_page_present(struct kvm_vcpu *vcpu)
 		return kvm_lapic_enabled(vcpu) && apf_pageready_slot_free(vcpu);
 }
 
+/* caller kvm_arch_irq_bypass_add_producer
+ * 		  kvm_vfio_set_group
+ */
 void kvm_arch_start_assignment(struct kvm *kvm)
 {
 	if (atomic_inc_return(&kvm->arch.assigned_device_count) == 1)
@@ -12546,6 +12554,7 @@ bool kvm_arch_has_irq_bypass(void)
 	return true;
 }
 
+/* use in: kvm_irqfd_assign */
 int kvm_arch_irq_bypass_add_producer(struct irq_bypass_consumer *cons,
 				      struct irq_bypass_producer *prod)
 {
@@ -12555,6 +12564,7 @@ int kvm_arch_irq_bypass_add_producer(struct irq_bypass_consumer *cons,
 
 	irqfd->producer = prod;
 	kvm_arch_start_assignment(irqfd->kvm);
+	/* pi_update_irte svm_update_pi_irte */
 	ret = static_call(kvm_x86_update_pi_irte)(irqfd->kvm,
 					 prod->irq, irqfd->gsi, 1);
 

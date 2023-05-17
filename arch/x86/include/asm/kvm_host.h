@@ -1094,6 +1094,10 @@ struct kvm_arch {
 #define __KVM_HAVE_ARCH_NONCOHERENT_DMA
 	atomic_t noncoherent_dma_count;
 #define __KVM_HAVE_ARCH_ASSIGNED_DEVICE
+	/* use in: kvm_arch_start_assignment
+	 * 		   kvm_arch_end_assignment
+	 * 		   kvm_arch_has_assigned_device
+	 */
 	atomic_t assigned_device_count;
 	struct kvm_pic *vpic;
 	struct kvm_ioapic *vioapic;

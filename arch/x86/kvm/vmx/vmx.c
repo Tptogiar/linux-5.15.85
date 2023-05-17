@@ -4601,10 +4601,10 @@ static void vmx_enable_nmi_window(struct kvm_vcpu *vcpu)
 	/* 没有开启virualt NMI 或是 blocking by STI 
 	 * (只有在“NMI exiting”以及“virtual-NMIs”都为1时,“NMI-window exiting”才能被置位)
 	 * 
-	 * (?analyse?: 这里为什么是打开 interrupt window ?
-	 * 比如guest中执行了STI执行，但是STI执行的下一条指令还没执行完毕，
+	 * (?todo?: 这里为什么是打开 interrupt window exiting ?)
+	 * (answer: 比如guest中执行了STI执行，但是STI执行的下一条指令还没执行完毕，
 	 * 还处于blocking by STI的状态，但是这个时候刚好vm-exit出来了，这个时候
-	 * guest state area中的interruptibility info 中的blocking by STI 就会被置为，
+	 * guest state area中的interruptibility info 中的blocking by STI 就会被置位，
 	 * 这个时候如果给guest注入事件就会比阻塞，所以需要把中断窗口打开，等blocking接触之后
 	 * 就会自动exit出来，这个时候就可以注入事件了)
 	 */
